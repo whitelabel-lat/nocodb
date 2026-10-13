@@ -165,6 +165,7 @@ export class ExportService {
               comparison_op: fl.comparison_op,
               comparison_sub_op: fl.comparison_sub_op,
               value: fl.value,
+              enabled: fl.enabled,
             };
 
             if (tempFl.is_group) {
@@ -452,6 +453,7 @@ export class ExportService {
                 comparison_op: fl.comparison_op,
                 comparison_sub_op: fl.comparison_sub_op,
                 value: fl.value,
+                enabled: fl.enabled,
               };
               if (tempFl.is_group) {
                 delete tempFl.comparison_op;
@@ -485,6 +487,7 @@ export class ExportService {
               comparison_op: fl.comparison_op,
               comparison_sub_op: fl.comparison_sub_op,
               value: fl.value,
+              enabled: fl.enabled,
               meta: fl.meta,
             };
             if (tempFl.is_group) {
@@ -695,6 +698,7 @@ export class ExportService {
                 comparison_op: fl.comparison_op,
                 comparison_sub_op: fl.comparison_sub_op,
                 value: fl.value,
+                enabled: fl.enabled,
               };
               if (tempFl.is_group) {
                 delete tempFl.comparison_op;
