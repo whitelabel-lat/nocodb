@@ -97,7 +97,7 @@ const topbarBreadcrumbItemWidth = computed(() => {
 
         <NcTooltip
           v-if="
-            (isEeUI || isFeatureEnabled(FEATURE_FLAG.EXTENSIONS)) &&
+            (isEeUI || ceUiFeatures.extensions || isFeatureEnabled(FEATURE_FLAG.EXTENSIONS)) &&
             !communityMode &&
             !isSharedBase &&
             !activeScriptId &&

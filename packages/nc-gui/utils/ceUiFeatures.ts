@@ -8,4 +8,6 @@
 export const ceUiFeatures = {
   /** "Admin Panel" entry in the user menu (/admin). */
   adminPanel: true,
+  /** Extensions panel in the topbar (`/api/v2/extensions`). */
+  extensions: true,
 } as const

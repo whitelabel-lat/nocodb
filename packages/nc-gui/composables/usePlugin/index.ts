@@ -101,7 +101,7 @@ export const usePlugin = createSharedComposable(() => {
 
   const { isFeatureEnabled } = useBetaFeatureToggle()
 
-  const isPluginsEnabled = computed(() => isEeUI)
+  const isPluginsEnabled = computed(() => isEeUI || ceUiFeatures.extensions)
 
   const isBetaPluginsEnabled = computed(() => isFeatureEnabled(FEATURE_FLAG.EXTENSIONS))
 
@@ -180,7 +180,7 @@ export const usePlugin = createSharedComposable(() => {
       if (
         manifest?.disabled !== true &&
         // Ensure the plugin is enabled for the current environment
-        (appInfo.value?.isOnPrem || (isEeUI && !manifest?.onPrem)) &&
+        (appInfo.value?.isOnPrem || ceUiFeatures.extensions || (isEeUI && !manifest?.onPrem)) &&
         (!manifest?.beta || isFeatureEnabled(FEATURE_FLAG.EXTENSIONS))
       ) {
         // Add to available plugins collection
