@@ -227,7 +227,7 @@ const isFieldHeaderVisibilityOptionVisible = computed(() => {
     !props.inSidebar &&
     isUIAllowed('viewCreateOrEdit') &&
     [ViewTypes.GALLERY, ViewTypes.KANBAN].includes(view.value?.type) &&
-    showEEFeatures.value
+    (showEEFeatures.value || ceUiFeatures.cardFieldHeader)
   )
 })
 

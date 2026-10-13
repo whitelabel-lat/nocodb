@@ -16,4 +16,6 @@ export const ceUiFeatures = {
   audit: true,
   /** Hide the "Try NocoDB Cloud" upsell card in the sidebar footer. */
   hideJoinCloud: true,
+  /** "Hide field names" toggle on Gallery and Kanban cards (`meta.is_field_header_visible`, no backend needed). */
+  cardFieldHeader: true,
 } as const

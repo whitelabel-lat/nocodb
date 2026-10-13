@@ -223,7 +223,7 @@ export const useViewsStore = defineStore('viewsStore', () => {
     }
 
     // If card field header visibility is not enabled or blocked, return true to show header by default
-    if (blockCardFieldHeaderVisibility.value || !isEeUI) return true
+    if (!ceUiFeatures.cardFieldHeader && (blockCardFieldHeaderVisibility.value || !isEeUI)) return true
 
     return viewMeta?.is_field_header_visible ?? true
   })
