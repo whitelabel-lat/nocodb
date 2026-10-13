@@ -120,3 +120,10 @@ No activables con flag (pantalla CE vacía): página nueva de API tokens (backen
 - Webhook de Dokploy para apps GitHub: exige header `X-GitHub-Event: push` y `ref: refs/heads/main`. Dokploy llegó a guardar la rama como `develop`; verificar `branch='main'` en la tabla `application`.
 - `nc-gui/lib/acl.ts` lanza error (pantalla en blanco) si un permiso aparece en dos roles que se heredan.
 - Las fuentes externas (Aurora_prod, aurora_dev, HI DEV) cifran sus credenciales con secretos de producción: en una copia local no cargan filas.
+- **API tokens limitados a una base**: la estrategia de token solo compara su `base_id` en rutas de base. En rutas de workspace u org el token actúa con el rol de su dueño. Por eso `instanceAuditList` y `workspaceAuditList` rechazan API tokens. Cualquier operación nueva de workspace/org con datos sensibles debe hacer lo mismo.
+
+## Pendientes de la revisión de seguridad de la auditoría
+
+- **Decidir**: el listado de base muestra emails, IPs y valores antes/después a owners y creators de la base (también a creators del workspace, que heredan creator en las bases). Si no se quiere, quitar `ip` en el scope de base o limitar `baseAuditList` a OWNER.
+- **Endurecer (no explotable hoy)**: en `aclFn` (`extract-ids.middleware.ts`), un rol con lista `exclude` concede cualquier permiso no excluido sin mirar el scope. Exigir que el permiso pertenezca a `permissionScopes[scope]`.
+- **Verificar**: la herencia workspace→base no mira si la base es privada (`default_role`). Si se usan bases privadas, un workspace CREATOR ve su auditoría.

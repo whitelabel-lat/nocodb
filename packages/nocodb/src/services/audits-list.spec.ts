@@ -7,6 +7,7 @@ import { OrgUserRoles, ProjectRoles, WorkspaceUserRoles } from 'nocodb-sdk';
 import { OPERATION_SCOPES } from '~/controllers/internal/operationScopes';
 import { AclMiddleware } from '~/middlewares/extract-ids/extract-ids.middleware';
 import { AuditsService } from '~/services/audits.service';
+import { AuditListOperations } from '~/controllers/internal/modules/AuditList.operations';
 import { redactAuditDetails } from '~/utils/auditRedaction';
 import Noco from '~/Noco';
 
@@ -415,5 +416,38 @@ describe('redactAuditDetails', () => {
   it('masks JWTs inside text', () => {
     const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijk';
     expect(redactAuditDetails({ msg: `x ${jwt}` })).not.toContain(jwt);
+  });
+});
+
+// ───────────────────────── API tokens ─────────────────────────
+describe('audit list with an API token', () => {
+  const auditList = jest.fn().mockResolvedValue({ list: [], pageInfo: {} });
+  const ops = new AuditListOperations({ auditList } as any);
+  const call = (operation: (typeof OPS)[number]) =>
+    ops.handle({ workspace_id: 'ws1', base_id: 'b1' } as any, {
+      workspaceId: 'ws1',
+      baseId: 'b1',
+      operation,
+      payload: {},
+      req: { user: { id: 'u1', is_api_token: true }, query: {} } as any,
+    });
+
+  beforeEach(() => auditList.mockClear());
+
+  // a base-scoped token is not checked on workspace and org routes
+  it.each(['instanceAuditList', 'workspaceAuditList'] as const)(
+    'refuses %s',
+    async (operation) => {
+      await expect(call(operation)).rejects.toThrow();
+      expect(auditList).not.toHaveBeenCalled();
+    },
+  );
+
+  it('allows baseAuditList (the token is checked against its base)', async () => {
+    await expect(call('baseAuditList')).resolves.toBeDefined();
+    expect(auditList).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'base', baseId: 'b1' }),
+      {},
+    );
   });
 });

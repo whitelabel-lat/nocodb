@@ -53,6 +53,12 @@ export class AuditListOperations
       req: NcRequest;
     },
   ): InternalGETResponseType {
+    // The API token strategy checks a base-scoped token only on base routes, so
+    // a token made for one base would reach the workspace and instance lists.
+    if (req.user?.is_api_token && operation !== 'baseAuditList') {
+      NcError.forbidden('Not allowed for API token');
+    }
+
     let scope: AuditListScope;
 
     switch (operation) {
