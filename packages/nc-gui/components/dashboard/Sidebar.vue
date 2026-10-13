@@ -47,8 +47,6 @@ onUnmounted(() => {
 
           <LazyGeneralMaintenanceAlert />
 
-          <GeneralGift v-if="!isEeUI" />
-
           <DashboardSidebarConnectAi />
 
           <DashboardSidebarBeforeUserInfo />

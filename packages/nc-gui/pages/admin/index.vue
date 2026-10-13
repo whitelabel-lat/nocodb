@@ -22,6 +22,8 @@ type AdminTab =
   | 'workspaces'
   | 'bases'
   | 'setup'
+  | 'setup-email'
+  | 'setup-storage'
   | 'external-integrations'
   | 'authentication'
   | 'license'
@@ -34,6 +36,8 @@ const validTabs = computed<AdminTab[]>(() => {
     'workspaces',
     'bases',
     'setup',
+    'setup-email',
+    'setup-storage',
     'external-integrations',
     'authentication',
     'users-list',
@@ -57,9 +61,26 @@ watch(activeTab, (tab) => {
   router.replace({ query: { ...route.query, tab } })
 })
 
+// The Setup page navigates here with `?tab=setup-<category>&app=<plugin>`: follow the URL.
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (validTabs.value.includes(tab as AdminTab)) activeTab.value = tab as AdminTab
+  },
+)
+
 const isSetupPageAllowed = computed(() => isUIAllowed('superAdminSetup'))
 
-const { emailConfigured, storageConfigured, loadSetupApps } = useProvideAccountSetupStore()
+const { emailConfigured, storageConfigured, loadSetupApps, categorizeApps } = useProvideAccountSetupStore()
+
+const setupCategory = computed(() => (activeTab.value === 'setup-email' ? 'email' : 'storage'))
+
+const activeSetupAppId = computed(
+  () => categorizeApps.value?.[setupCategory.value]?.find((app: any) => app.title === route.query.app)?.id,
+)
+
+// Email and Storage sub-pages keep the "Setup" entry highlighted.
+const selectedMenuKey = computed(() => (activeTab.value.startsWith('setup-') ? 'setup' : activeTab.value))
 
 watchEffect(() => {
   if (isSetupPageAllowed.value) {
@@ -89,7 +110,7 @@ watch(
       <div class="h-full flex">
         <!-- Side tabs -->
         <div class="h-full bg-nc-bg-gray-sidebar nc-user-sidebar overflow-y-auto nc-scrollbar-thin min-w-[312px]">
-          <NcMenu :selected-keys="[activeTab]" :inline-indent="16" class="tabs-menu h-full" mode="inline">
+          <NcMenu :selected-keys="[selectedMenuKey]" :inline-indent="16" class="tabs-menu h-full" mode="inline">
             <div class="h-[var(--topbar-height)] flex items-center children:flex-none">
               <NcButton
                 v-e="['c:navbar:home']"
@@ -184,7 +205,7 @@ watch(
             <NcMenuItem
               v-if="isSetupPageAllowed"
               key="setup"
-              :class="{ active: activeTab === 'setup' }"
+              :class="{ active: selectedMenuKey === 'setup' }"
               class="item"
               @click="activeTab = 'setup'"
             >
@@ -251,6 +272,10 @@ watch(
               <AdminInstanceWorkspaces v-else-if="activeTab === 'workspaces'" />
               <AdminInstanceBases v-else-if="activeTab === 'bases'" />
               <AccountSetup v-else-if="activeTab === 'setup'" />
+              <template v-else-if="activeTab === 'setup-email' || activeTab === 'setup-storage'">
+                <LazyAccountSetupConfig v-if="route.query.app && activeSetupAppId" :id="activeSetupAppId" :key="activeSetupAppId" />
+                <LazyAccountSetupList v-else-if="!route.query.app" :category="setupCategory === 'email' ? 'Email' : 'Storage'" />
+              </template>
               <AccountExternalIntegrations v-else-if="activeTab === 'external-integrations'" />
               <AccountAuthentication v-else-if="activeTab === 'authentication'" />
               <AccountLicense v-else-if="activeTab === 'license'" />

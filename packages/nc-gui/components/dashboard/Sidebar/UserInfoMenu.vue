@@ -153,7 +153,7 @@ const openKeyboardShortcutDialog = () => {
       </NcSubMenu>
 
       <!-- Admin Panel (EE) -->
-      <DashboardSidebarEEMenuOption v-if="isEeUI" />
+      <DashboardSidebarEEMenuOption v-if="isEeUI || ceUiFeatures.adminPanel" />
 
       <!-- API Tokens -->
       <nuxt-link v-e="['c:user:api-tokens']" class="!no-underline" to="/account/tokens" @click="saveBackRoute">

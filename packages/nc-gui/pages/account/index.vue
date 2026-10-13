@@ -7,6 +7,8 @@ const $route = useRoute()
 
 const { signedIn, signOut } = useGlobal()
 
+const { isUIAllowed } = useRoles()
+
 const selectedKeys = computed(() => [$route.params.nestedPage ?? $route.params.page])
 
 const openKeys = ref([])
@@ -95,6 +97,22 @@ const logout = async () => {
                   <GeneralIcon icon="mcp" class="h-4 w-4 flex-none" />
 
                   <div class="select-none">{{ $t('title.mcpServer') }}</div>
+                </div>
+              </NcMenuItem>
+              <!-- Email / storage plugins (SMTP...): the only way to configure outgoing email in CE. -->
+              <NcMenuItem
+                v-if="isUIAllowed('superAdminSetup')"
+                key="setup"
+                class="item"
+                :class="{
+                  active: $route.path.startsWith('/account/setup'),
+                }"
+                data-testid="nc-account-menu-setup"
+                @click="navigateTo('/account/setup')"
+              >
+                <div class="flex items-center space-x-2">
+                  <GeneralIcon icon="ncSliders" class="!h-4 !w-4" />
+                  <div class="select-none">{{ $t('labels.setup') }}</div>
                 </div>
               </NcMenuItem>
               <NcMenuItem
