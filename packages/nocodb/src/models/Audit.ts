@@ -23,6 +23,8 @@ export default class Audit {
   details?: any;
   version?: number;
   fk_parent_id?: string;
+  op_sub_type?: string;
+  created_at?: Date | string;
 
   protected static limit = 25;
 
@@ -172,6 +174,103 @@ export default class Audit {
       {},
       { pageInfo: { isLastPage: true } },
     );
+  }
+
+  static readonly MAX_PAGE_SIZE = 100;
+  static readonly DEFAULT_PAGE_SIZE = 25;
+
+  // CE implementation (whitelabel fork)
+  /**
+   * Keyset-paginated listing, newest first (created_at desc, id desc).
+   * Scope columns (workspace / base) come from the caller's resolved context,
+   * never from user input; `filters` only narrow within that scope.
+   */
+  public static async list(
+    scope: { workspaceId?: string; baseId?: string },
+    filters: {
+      user?: string;
+      baseId?: string;
+      modelId?: string;
+      rowId?: string;
+      opTypes?: string[];
+      opSubTypes?: string[];
+      from?: Date;
+      to?: Date;
+      cursor?: { createdAt: string; id: string };
+      limit?: number;
+    },
+    ncAudit = Noco.ncAudit,
+  ): Promise<{ rows: Audit[]; hasMore: boolean }> {
+    const limit = Math.min(
+      Math.max(1, filters.limit ?? this.DEFAULT_PAGE_SIZE),
+      this.MAX_PAGE_SIZE,
+    );
+    const isPg = ncAudit.knex.client.config.client === 'pg';
+    // pg parses ISO strings; other clients store 'YYYY-MM-DD HH:mm:ss(Z)'
+    const ts = (d: Date | string) =>
+      isPg
+        ? new Date(d).toISOString()
+        : ncAudit.formatDateTime(new Date(d).toISOString());
+
+    const query = ncAudit.knex(MetaTable.AUDIT);
+
+    if (scope.workspaceId) query.where('fk_workspace_id', scope.workspaceId);
+    if (scope.baseId) query.where('base_id', scope.baseId);
+    if (filters.baseId) query.where('base_id', filters.baseId);
+    if (filters.modelId) query.where('fk_model_id', filters.modelId);
+    if (filters.rowId) query.where('row_id', filters.rowId);
+    if (filters.opTypes?.length) query.whereIn('op_type', filters.opTypes);
+    if (filters.opSubTypes?.length)
+      query.whereIn('op_sub_type', filters.opSubTypes);
+    if (filters.user) {
+      // Emails match `user` (index friendly: exact, as typed or lower-cased);
+      // anything else is treated as a user id.
+      if (filters.user.includes('@')) {
+        query.whereIn('user', [
+          ...new Set([filters.user, filters.user.toLowerCase()]),
+        ]);
+      } else {
+        query.where('fk_user_id', filters.user);
+      }
+    }
+    if (filters.from) query.where('created_at', '>=', ts(filters.from));
+    if (filters.to) query.where('created_at', '<=', ts(filters.to));
+    if (filters.cursor) {
+      const { createdAt, id } = filters.cursor;
+      query.where(function () {
+        this.where('created_at', '<', ts(createdAt)).orWhere(function () {
+          this.where('created_at', ts(createdAt)).andWhere('id', '<', id);
+        });
+      });
+    }
+
+    const rows = await query
+      .select(
+        'id',
+        'user',
+        'fk_user_id',
+        'ip',
+        'source_id',
+        'fk_workspace_id',
+        'base_id',
+        'fk_model_id',
+        'row_id',
+        'op_type',
+        'op_sub_type',
+        'description',
+        'details',
+        'version',
+        'created_at',
+      )
+      .orderBy([
+        { column: 'created_at', order: 'desc' },
+        { column: 'id', order: 'desc' },
+      ])
+      .limit(limit + 1);
+
+    const hasMore = rows.length > limit;
+    if (hasMore) rows.pop();
+    return { rows: rows.map((r) => new Audit(r)), hasMore };
   }
 
   // TODO: remove this - it is deprecated and only used on unit tests

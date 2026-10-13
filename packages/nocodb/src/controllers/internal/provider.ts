@@ -1,5 +1,6 @@
 import type { InternalApiModule } from '~/utils/internal-type';
 import { RecordAuditListOperations } from '~/controllers/internal/modules/RecordAuditList.operations';
+import { AuditListOperations } from '~/controllers/internal/modules/AuditList.operations';
 import { McpGetOperations } from '~/controllers/internal/modules/McpGet.operations';
 import { McpPostOperations } from '~/controllers/internal/modules/McpPost.operations';
 import { OAuthGetOperations } from '~/controllers/internal/modules/OAuthGet.operations';
@@ -20,6 +21,7 @@ export const InternalApiModules = [
   OAuthGetOperations,
   OAuthPostOperations,
   RecordAuditListOperations,
+  AuditListOperations,
   DependencyPostOperations,
   UiGetOperations,
   UiPostOperations,

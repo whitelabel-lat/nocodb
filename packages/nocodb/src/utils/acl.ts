@@ -69,6 +69,7 @@ export const permissionScopes = {
     'instanceAdminStats',
     'instanceAdminWorkspaces',
     'instanceAdminBases',
+    'instanceAuditList',
 
     // Cache
     'cacheGet',
@@ -142,6 +143,7 @@ export const permissionScopes = {
     'workspaceInviteLinkCreate',
     'workspaceInviteLinkUpdate',
     'workspaceInviteLinkDelete',
+    'workspaceAuditList',
   ],
   base: [
     'nestedDataListCopyPasteOrDeleteAll',
@@ -220,6 +222,7 @@ export const permissionScopes = {
     'hideAllColumns',
     'showAllColumns',
     'recordAuditList',
+    'baseAuditList',
     'dataUpdate',
     'dataDelete',
     'dataInsert',
@@ -1046,6 +1049,9 @@ const permissionDescriptions: Record<string, string> = {
   hideAllColumns: 'hide all columns',
   showAllColumns: 'show all columns',
   recordAuditList: 'view audit log for a row',
+  instanceAuditList: 'view the audit log of the whole instance',
+  workspaceAuditList: 'view the audit log of the workspace',
+  baseAuditList: 'view the audit log of the base',
   dataUpdate: 'update data',
   dataDelete: 'delete data',
   dataInsert: 'insert new data',
