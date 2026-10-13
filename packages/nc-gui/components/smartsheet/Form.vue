@@ -59,6 +59,9 @@ const { isDark } = useTheme()
 
 const { isWhiteLabelled } = useBranding()
 
+// Custom banner/logo upload and "hide branding" are backed by CE (FormView stores them), so they are turned on by flag.
+const isFormBrandingEnabled = isEeUI || ceUiFeatures.formBranding
+
 const { base, showBaseAccessRequestOverlay } = storeToRefs(useBase())
 
 const { getPossibleAttachmentSrc } = useAttachment()
@@ -1076,7 +1079,7 @@ const handleChangeBackground = (color: string) => {
 }
 
 const openUploadImage = (isUploadBanner: boolean) => {
-  if (!isEditable || !appInfo.value.ee) return
+  if (!isEditable || !isFormBrandingEnabled) return
 
   imageCropperData.value.uploadConfig = {
     path: [NOCO, base.value.id, meta.value?.id, formViewData.value?.id].join('/'),
@@ -1531,7 +1534,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                     />
                     <div class="absolute bottom-0 right-0 hidden group-hover:block">
                       <div class="flex items-center space-x-1 m-2">
-                        <NcTooltip :disabled="showEEFeatures || isLocked">
+                        <NcTooltip :disabled="showEEFeatures || isFormBrandingEnabled || isLocked">
                           <template #title>
                             <div class="text-center">
                               {{ $t('msg.info.thisFeatureIsOnlyAvailableInEnterpriseEdition') }}
@@ -1544,7 +1547,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                                 size="small"
                                 class="nc-form-upload-banner-btn"
                                 data-testid="nc-form-upload-banner-btn"
-                                :disabled="!isEeUI || isLocked || !showEEFeatures"
+                                :disabled="!isFormBrandingEnabled || isLocked"
                                 @click.stop="click(PlanFeatureTypes.FEATURE_FORM_CUSTOM_LOGO, () => openUploadImage(true))"
                               >
                                 <div class="flex gap-2 items-center">
@@ -1567,7 +1570,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                             </template>
                           </PaymentUpgradeBadgeProvider>
                         </NcTooltip>
-                        <NcTooltip v-if="isEeUI && formViewData.banner_image_url" :disabled="isLocked">
+                        <NcTooltip v-if="isFormBrandingEnabled && formViewData.banner_image_url" :disabled="isLocked">
                           <template #title> {{ $t('general.delete') }} {{ $t('general.banner') }} </template>
                           <NcButton
                             type="secondary"
@@ -1654,7 +1657,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                               class="items-center space-x-1 flex-nowrap m-3"
                               :class="formViewData.logo_url ? 'hidden absolute top-0 left-0 group-hover:flex' : 'flex'"
                             >
-                              <NcTooltip :disabled="showEEFeatures || isLocked">
+                              <NcTooltip :disabled="showEEFeatures || isFormBrandingEnabled || isLocked">
                                 <template #title>
                                   <div class="text-center">
                                     {{ $t('msg.info.thisFeatureIsOnlyAvailableInEnterpriseEdition') }}
@@ -1670,7 +1673,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                                       size="small"
                                       class="nc-form-upload-logo-btn group"
                                       data-testid="nc-form-upload-log-btn"
-                                      :disabled="!isEeUI || isLocked || !showEEFeatures"
+                                      :disabled="!isFormBrandingEnabled || isLocked"
                                       @click.stop="click(PlanFeatureTypes.FEATURE_FORM_CUSTOM_LOGO, () => openUploadImage(false))"
                                     >
                                       <div class="flex gap-2 items-center">
@@ -1694,7 +1697,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                                   </template>
                                 </PaymentUpgradeBadgeProvider>
                               </NcTooltip>
-                              <NcTooltip v-if="isEeUI && formViewData.logo_url" :disabled="isLocked">
+                              <NcTooltip v-if="isFormBrandingEnabled && formViewData.logo_url" :disabled="isLocked">
                                 <template #title> {{ $t('general.delete') }} {{ $t('general.logo') }} </template>
                                 <NcButton
                                   type="secondary"
@@ -2417,7 +2420,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                                 </span>
 
                                 <a-switch
-                                  v-if="showEEFeatures"
+                                  v-if="showEEFeatures || isFormBrandingEnabled"
                                   v-e="[`a:form-view:hide-branding`]"
                                   :checked="parseProp(formViewData.meta)?.hide_branding"
                                   size="small"

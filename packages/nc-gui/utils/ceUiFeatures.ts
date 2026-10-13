@@ -20,4 +20,6 @@ export const ceUiFeatures = {
   cardFieldHeader: true,
   /** "Redirect to URL" after submitting a form (`redirect_url` stored by FormView, only absolute http(s) accepted). */
   formRedirect: true,
+  /** Custom banner and logo upload plus "Hide NocoDB branding" on forms (`banner_image_url`, `logo_url`, `meta.hide_branding`). */
+  formBranding: true,
 } as const

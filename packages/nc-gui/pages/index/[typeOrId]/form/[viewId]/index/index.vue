@@ -128,6 +128,8 @@ const { message: templatedMessage } = useTemplatedMessage(
     >
       <template v-if="sharedFormView">
         <div>
+          <GeneralFormLogo v-if="sharedFormView.logo_url" :logo-url="sharedFormView.logo_url" class="mb-4" />
+
           <h1 class="text-2xl font-bold text-nc-content-gray-emphasis mb-4">
             {{ sharedFormView.heading }}
           </h1>
@@ -309,7 +311,7 @@ const { message: templatedMessage } = useTemplatedMessage(
               </div>
             </a-form>
           </div>
-          <div>
+          <div v-if="!parseProp(sharedFormView?.meta).hide_branding">
             <a-divider class="!my-6 !md:my-8" />
             <div class="inline-block">
               <GeneralFormBranding />

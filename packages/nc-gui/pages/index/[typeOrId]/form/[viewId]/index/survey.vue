@@ -291,6 +291,8 @@ const { message: templatedMessage } = useTemplatedMessage(
             class="flex-none mb-4"
           />
           <div class="rounded-3xl border-1 border-nc-border-gray-medium p-6 lg:p-12 bg-nc-bg-default">
+            <GeneralFormLogo v-if="sharedFormView.logo_url" :logo-url="sharedFormView.logo_url" class="mb-4" />
+
             <h1 class="text-2xl font-bold text-nc-content-gray-emphasis mb-4" data-testid="nc-survey-form__heading">
               {{ sharedFormView.heading }}
             </h1>
@@ -523,7 +525,7 @@ const { message: templatedMessage } = useTemplatedMessage(
       </div>
       <div class="lg:(absolute bottom-0 right-0 px-4 pb-4) lg:px-10 lg:pb-10">
         <div class="flex justify-end items-center gap-4 nc-survey-form-branding">
-          <div class="flex justify-center">
+          <div v-if="!parseProp(sharedFormView?.meta).hide_branding" class="flex justify-center">
             <GeneralFormBranding
               class="inline-flex mx-auto"
               :style="{
