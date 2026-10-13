@@ -1,6 +1,10 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { INITIAL_LEFT_SIDEBAR_WIDTH, MINI_SIDEBAR_WIDTH, NC_BREAKPOINTS, NEW_MINI_SIDEBAR_WIDTH } from '~/lib/constants'
 
+// Upstream (develop 58adddcea3) uses this name without defining it, which throws in
+// `routeDerivedTab`. It is the route of the base overview page.
+const BASE_OVERVIEW_ROUTE = 'index-typeOrId-baseId-index-index'
+
 export const useSidebarStore = defineStore('sidebarStore', () => {
   const router = useRouter()
   const route = router.currentRoute
