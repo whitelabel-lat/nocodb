@@ -10,4 +10,6 @@ export const ceUiFeatures = {
   adminPanel: true,
   /** Extensions panel in the topbar (`/api/v2/extensions`). */
   extensions: true,
+  /** Hide the "Try NocoDB Cloud" upsell card in the sidebar footer. */
+  hideJoinCloud: true,
 } as const

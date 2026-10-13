@@ -4,8 +4,13 @@
 
 ARG NODE_VERSION=24.14.0
 ARG PNPM_VERSION=10.34.7
-# Release version of the code. The API reads it from package.json.
-ARG NC_VERSION=2026.09.1
+# Version written into package.json. The API shows it in /api/v1/version and uses it
+# for telemetry and Sentry only. The GUI "Upgrade available" badge compares it, as a
+# plain string, with the latest GitHub tag, and skips the badge when it contains
+# "-beta.". So this build uses <last tag>-beta.<commits since>.g<short sha>: honest
+# (a pre-release of upstream develop) and no false upgrade prompt. No code does semver
+# comparisons on it. Use the plain tag (e.g. 2026.09.1) for a release build.
+ARG NC_VERSION=2026.09.1-beta.456.g58adddc
 
 ############################
 # Base: Node, pnpm, compilers
