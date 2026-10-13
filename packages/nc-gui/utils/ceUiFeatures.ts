@@ -12,6 +12,8 @@ export const ceUiFeatures = {
   extensions: true,
   /** "Remove member" in the workspace members list (`DELETE /api/v1/workspaces/:id/users/:userId`). */
   workspaceMemberRemove: true,
+  /** Audit log screens: admin panel, workspace settings and base settings (`*AuditList` internal operations). */
+  audit: true,
   /** Hide the "Try NocoDB Cloud" upsell card in the sidebar footer. */
   hideJoinCloud: true,
 } as const

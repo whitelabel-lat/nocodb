@@ -50,7 +50,11 @@ export function useWorkspaceTabVisibility(
       // Org-linked (enterprise) workspaces have no Billing tab — Usage shows their
       // plan limits instead. Also visible to org admins drilling into a workspace.
       usage: isEeUI && !!ws.value?.fk_org_id && isBaseRolesLoaded.value && (isAdmin.value || isUIAllowed('workspaceBilling')),
-      audits: !isAdmin.value && showEEFeatures.value && isBaseRolesLoaded.value && isUIAllowed('workspaceAuditList'),
+      audits:
+        !isAdmin.value &&
+        (showEEFeatures.value || ceUiFeatures.audit) &&
+        isBaseRolesLoaded.value &&
+        isUIAllowed('workspaceAuditList'),
       sso:
         isWorkspaceSsoAvail.value &&
         showEEFeatures.value &&

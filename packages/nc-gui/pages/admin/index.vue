@@ -29,6 +29,7 @@ type AdminTab =
   | 'license'
   | 'users-list'
   | 'settings'
+  | 'audit'
 
 const validTabs = computed<AdminTab[]>(() => {
   const tabs: AdminTab[] = [
@@ -43,6 +44,10 @@ const validTabs = computed<AdminTab[]>(() => {
     'users-list',
     'settings',
   ]
+
+  if (isEeUI || ceUiFeatures.audit) {
+    tabs.push('audit')
+  }
 
   if (showLicenseTab.value) {
     tabs.push('license')
@@ -248,6 +253,20 @@ watch(
               </div>
             </NcMenuItem>
 
+            <NcMenuItem
+              v-if="isEeUI || ceUiFeatures.audit"
+              key="audit"
+              :class="{ active: activeTab === 'audit' }"
+              class="item"
+              data-testid="nc-admin-audit"
+              @click="activeTab = 'audit'"
+            >
+              <div class="flex items-center space-x-2">
+                <GeneralIcon icon="audit" class="!h-4 !w-4" />
+                <div class="select-none">{{ $t('title.audits') }}</div>
+              </div>
+            </NcMenuItem>
+
             <!-- System -->
             <NcMenuItem
               v-if="showLicenseTab"
@@ -273,7 +292,11 @@ watch(
               <AdminInstanceBases v-else-if="activeTab === 'bases'" />
               <AccountSetup v-else-if="activeTab === 'setup'" />
               <template v-else-if="activeTab === 'setup-email' || activeTab === 'setup-storage'">
-                <LazyAccountSetupConfig v-if="route.query.app && activeSetupAppId" :id="activeSetupAppId" :key="activeSetupAppId" />
+                <LazyAccountSetupConfig
+                  v-if="route.query.app && activeSetupAppId"
+                  :id="activeSetupAppId"
+                  :key="activeSetupAppId"
+                />
                 <LazyAccountSetupList v-else-if="!route.query.app" :category="setupCategory === 'email' ? 'Email' : 'Storage'" />
               </template>
               <AccountExternalIntegrations v-else-if="activeTab === 'external-integrations'" />
@@ -281,6 +304,7 @@ watch(
               <AccountLicense v-else-if="activeTab === 'license'" />
               <AccountUserList v-else-if="activeTab === 'users-list'" />
               <AccountSignupSettings v-else-if="activeTab === 'settings'" />
+              <AdminAudit v-else-if="activeTab === 'audit'" />
             </div>
           </div>
         </div>

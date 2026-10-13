@@ -37,7 +37,7 @@ export const useEeConfig = createSharedComposable(() => {
 
   const gracePeriodEndDate = computed(() => '')
 
-  const isWsAuditEnabled = computed(() => false)
+  const isWsAuditEnabled = computed(() => ceUiFeatures.audit)
 
   const isAllowToAddExtension = computed(() => true)
 

@@ -162,7 +162,11 @@ export function useBaseSettingsNav() {
   )
 
   const canSeeAuditLog = computed(
-    () => isEeUI && showEEFeatures.value && isWsAuditEnabled.value && isUIAllowed('baseAuditList') && !isMobileMode.value,
+    () =>
+      ((isEeUI && showEEFeatures.value) || ceUiFeatures.audit) &&
+      isWsAuditEnabled.value &&
+      isUIAllowed('baseAuditList') &&
+      !isMobileMode.value,
   )
 
   const canSeeTrashRetention = computed(

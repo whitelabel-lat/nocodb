@@ -87,11 +87,11 @@ const rolePermissions = {
       baseDelete: true,
       manageSnapshot: true,
       migrateBase: true,
-      baseAuditList: true,
     },
   },
   [ProjectRoles.CREATOR]: {
     include: {
+      baseAuditList: true,
       baseCreate: true,
       fieldUpdate: true,
       hookList: true,
