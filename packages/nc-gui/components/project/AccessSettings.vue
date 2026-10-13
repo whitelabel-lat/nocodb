@@ -28,10 +28,6 @@ const { isTeamsEnabled, activeWorkspaceId, teamsMap } = storeToRefs(useWorkspace
 
 const { isPrivateBase, base } = storeToRefs(useBase())
 
-const { isAppsEnabled } = storeToRefs(useAppStore())
-
-const { isCodeProject } = useCodeProjects()
-
 const basesStore = useBases()
 const { getBaseUsers, getBaseTeams, createProjectUser, updateProjectUser, removeProjectUser, baseTeamUpdate, baseTeamRemove } =
   basesStore
@@ -415,8 +411,8 @@ const updateCollaborator = async (collab: any, roles: ProjectRoles) => {
         tableId: undefined,
       })
       showInfoModal({
-        title: `Base access no longer available`,
-        content: `You removed your access from base ${currentBase.value?.title}.`,
+        title: `Project access no longer available`,
+        content: `You removed your access from project ${currentBase.value?.title}.`,
       })
     } else {
       loadCollaborators()
@@ -970,9 +966,6 @@ onBeforeUnmount(() => {
               </div>
             </template>
           </NcTable>
-
-          <!-- A code project has no app whose teams could project here. -->
-          <ProjectAppTeamsSection v-if="isAppsEnabled && baseId && !isCodeProject(currentBase)" :base-id="baseId" />
         </div>
       </div>
 

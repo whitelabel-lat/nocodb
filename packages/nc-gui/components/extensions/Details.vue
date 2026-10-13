@@ -73,7 +73,13 @@ const detailsBody = computed(() => {
 </script>
 
 <template>
-  <NcModal v-model:visible="vModel" :footer="null" size="lg" wrap-class-name="nc-modal-extension-details">
+  <NcModal
+    v-model:visible="vModel"
+    :footer="null"
+    size="feature"
+    nc-modal-class-name="!p-0"
+    wrap-class-name="nc-modal-extension-details"
+  >
     <div v-if="activeExtension" class="flex flex-col w-full h-full">
       <div class="flex items-center gap-3 px-4 py-3 border-b-1 border-nc-border-gray-medium">
         <NcButton v-if="from === 'market'" size="small" type="text" @click="onBack">
@@ -129,7 +135,7 @@ const detailsBody = computed(() => {
 
           <NcDivider />
           <div v-if="activeExtension.publisher" class="extension-details-right-section">
-            <div class="extension-details-right-title">Publisher</div>
+            <div class="extension-details-right-title">{{ $t('labels.publisher') }}</div>
             <div class="flex items-center gap-2">
               <img
                 v-if="activeExtension.publisher?.icon?.src"
@@ -151,7 +157,7 @@ const detailsBody = computed(() => {
                 rel="noopener noreferrer"
                 class="!no-underline !hover:underline"
               >
-                Website
+                {{ $t('labels.publisherWebsite') }}
               </a>
               <template v-if="activeExtension.publisher?.email">
                 <div class="border-l-1 border-nc-border-gray-medium h-5"></div>
@@ -161,7 +167,7 @@ const detailsBody = computed(() => {
                   rel="noopener noreferrer"
                   class="!no-underline !hover:underline"
                 >
-                  Contact
+                  {{ $t('labels.publisherContact') }}
                 </a>
               </template>
             </div>
@@ -222,9 +228,6 @@ const detailsBody = computed(() => {
 .nc-modal-extension-details {
   .ant-modal-content {
     @apply overflow-hidden;
-  }
-  .nc-modal {
-    @apply !p-0;
   }
 
   .nc-extension-details-body {

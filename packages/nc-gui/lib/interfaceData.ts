@@ -130,6 +130,14 @@ export interface InterfacePageDataApi {
     nestedFiltersArr?: FilterType[]
   }): Promise<{ count: number }>
   /**
+   * Record-count badges for the page's TABS user-filter element — one count
+   * per tab that opts in, each under the tab's own pinned viz (else the page
+   * default) ∧ RLS; the viewer's ad-hoc toolbar search/filter is NOT applied. Keyed by tab
+   * id; the "All records" tab under `INTERFACE_ALL_RECORDS_TAB_KEY`. Optional —
+   * absent on adapters that don't back a tab strip (public shares return `{}`).
+   */
+  fetchUserFilterTabCounts?: () => Promise<{ counts: Record<string, number> }>
+  /**
    * Enqueue a server-side CSV export of this page/viz scope (builder-opt-in
    * via the page's Advanced `allow_csv_export` toggle). The server resolves
    * the exact same composed scope as `fetchList` — grants, draft/published
@@ -404,6 +412,11 @@ export interface InterfacePageDataApi {
    */
   triggerButtonHook?(params: { rowId: string; columnId: string }): Promise<unknown>
   /**
+   * Run a workflow Button field — the workflow resolves server-side from the
+   * column. Interface edit rule, same as the webhook button.
+   */
+  triggerButtonWorkflow?(params: { rowId: string; columnId: string }): Promise<unknown>
+  /**
    * Identity of the page/viz this api serves — appended to the DATA_EVENT
    * subscription key (see `interfaceDataEventSuffix`) so the server routes
    * the socket into the page-scoped realtime room (grant-gated, filters +
@@ -467,7 +480,7 @@ export interface InterfacePageDataApi {
   frozenFieldCount?: Ref<number | undefined>
   /**
    * Persist the freeze-divider drag for this viz — writes viz
-   * `frozen_column_count` (1-3). Same builder-only / no-native-write contract
+   * `frozen_column_count`. Same builder-only / no-native-write contract
    * as `setFieldWidth`; absent = the divider is not adjustable.
    */
   setFrozenFieldCount?: (count: number) => void
@@ -494,6 +507,16 @@ export interface InterfacePageDataApi {
     filtersArr?: FilterType[]
     bulkFilterList: Array<{ alias: string; where?: string; filterArrJson?: string }>
   }) => Promise<Record<string, Record<string, any>>>
+}
+
+/** Page-level record counts for a TABS user-filter strip, fed by the mounted viz's data adapter. */
+export interface InterfaceUserFilterTabCountsApi {
+  /** Keyed by tab id; the "All records" tab under `INTERFACE_ALL_RECORDS_TAB_KEY`. Empty until loaded. */
+  counts: Ref<Record<string, number>>
+  /** Register the mounted viz's adapter + realtime room; returns the detach. */
+  attach: (dataApi: InterfacePageDataApi, sourceMeta: TableType | undefined, isPublic: boolean) => () => void
+  /** Debounced recount (realtime events, the viewer's own writes). */
+  invalidate: () => void
 }
 
 /**

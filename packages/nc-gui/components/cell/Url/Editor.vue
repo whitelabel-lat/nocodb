@@ -14,7 +14,7 @@ const editEnabled = inject(EditModeInj, ref(false))
 const isEditColumn = inject(EditColumnInj, ref(false))
 const readOnly = inject(ReadonlyInj, ref(false))
 const isExpandedFormOpen = inject(IsExpandedFormOpenInj, ref(false))!
-const isForm = inject(IsFormInj)!
+const isForm = inject(IsFormInj, ref(false))
 const isCanvasInjected = inject(IsCanvasInjectionInj, false)
 
 const trim = (val: string) => val?.trim?.()
@@ -118,7 +118,7 @@ const formFieldAutocomplete = inject(FormFieldAutocompleteInj, ref(undefined))
     >
       <a
         class="truncate text-primary cursor-pointer pointer-events-auto no-user-select"
-        :href="url"
+        :href="getExternalLinkHref(url)"
         @click.prevent="confirmPageLeavingRedirect(url)"
       >
         {{ vModel }}

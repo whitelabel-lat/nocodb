@@ -15,11 +15,13 @@ import { BaseUsersService } from '~/services/base-users/base-users.service';
 import { MailService } from '~/services/mail/mail.service';
 import { validatePayload } from '~/helpers';
 import { NcBaseError, NcError } from '~/helpers/catchError';
+import { aliasesWithoutAccount } from '~/helpers/emailAliasHelpers';
 import { extractProps } from '~/helpers/extractProps';
 import { randomTokenString } from '~/helpers/stringHelpers';
 import {
   ApiToken,
   BaseUser,
+  MCPToken,
   PresignedUrl,
   SyncSource,
   User,
@@ -32,7 +34,7 @@ import { MetaTable, RootScopes } from '~/utils/globals';
 import { MailEvent } from '~/interface/Mail';
 import { ensureUserInDefaultWorkspace } from '~/helpers/verifyDefaultWorkspace';
 import { ensureUserInDefaultOrg } from '~/helpers/verifyDefaultOrg';
-import { sanitizeEmail } from '~/utils/emailUtils';
+import { emailAliasNotAllowedMessage, sanitizeEmail } from '~/utils/emailUtils';
 
 @Injectable()
 export class OrgUsersService {
@@ -196,6 +198,9 @@ export class OrgUsersService {
       // delete api tokens (with cache invalidation)
       await ApiToken.deleteByUser(param.userId, ncMeta);
 
+      // BaseUser.delete only clears MCP tokens for the base it leaves.
+      await MCPToken.bulkDelete({ fk_user_id: param.userId }, ncMeta);
+
       // soft-delete user (preserves record for audit/cell data)
       await User.softDelete(param.userId, ncMeta);
       await ncMeta.commit();
@@ -246,6 +251,11 @@ export class OrgUsersService {
     }
     if (invalidEmails.length) {
       NcError.badRequest('Invalid email address : ' + invalidEmails.join(', '));
+    }
+
+    const aliasEmails = await aliasesWithoutAccount(emails);
+    if (aliasEmails.length) {
+      NcError.badRequest(emailAliasNotAllowedMessage(aliasEmails));
     }
 
     const error = [];

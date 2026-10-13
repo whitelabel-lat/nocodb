@@ -204,12 +204,21 @@ importers:
       '@aws-amplify/core':
         specifier: ^5.8.14
         version: 5.8.14(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0))
-      '@aws-amplify/ui-vue':
-        specifier: ^3.1.30
-        version: 3.1.30(@types/node@22.15.23)(aws-amplify@5.3.29(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0)))(vue@3.5.14(typescript@5.8.3))
       '@ckpack/vue-color':
         specifier: ^1.6.0
         version: 1.6.0(vue@3.5.14(typescript@5.8.3))
+      '@codemirror/autocomplete':
+        specifier: ^6.20.3
+        version: 6.20.3
+      '@codemirror/commands':
+        specifier: ^6.11.1
+        version: 6.11.1
+      '@codemirror/state':
+        specifier: ^6.7.6
+        version: 6.7.6
+      '@codemirror/view':
+        specifier: ^6.43.13
+        version: 6.43.13
       '@dagrejs/dagre':
         specifier: ^1.1.8
         version: 1.1.8
@@ -255,6 +264,12 @@ importers:
       '@tiptap/extension-code-block-lowlight':
         specifier: ^2.11.5
         version: 2.27.2(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/extension-code-block@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(highlight.js@11.11.1)(lowlight@3.3.0)
+      '@tiptap/extension-collaboration':
+        specifier: 2.11.5
+        version: 2.11.5(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(y-prosemirror@1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32))
+      '@tiptap/extension-collaboration-cursor':
+        specifier: 2.11.5
+        version: 2.11.5(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(y-prosemirror@1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32))
       '@tiptap/extension-color':
         specifier: ^2.11.5
         version: 2.27.2(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/extension-text-style@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0)))
@@ -365,7 +380,7 @@ importers:
         version: 10.11.1(vue@3.5.14(typescript@5.8.3))
       '@vueuse/integrations':
         specifier: ^10.11.1
-        version: 10.11.1(async-validator@4.2.5)(axios@1.18.1)(change-case@4.1.2)(fuse.js@6.6.2)(jwt-decode@3.1.2)(qrcode@1.5.4)(sortablejs@1.15.6)(vue@3.5.14(typescript@5.8.3))
+        version: 10.11.1(async-validator@4.2.5)(axios@1.18.0)(change-case@4.1.2)(fuse.js@6.6.2)(jwt-decode@3.1.2)(qrcode@1.5.4)(sortablejs@1.15.6)(vue@3.5.14(typescript@5.8.3))
       '@vueuse/motion':
         specifier: ^2.2.6
         version: 2.2.6(magicast@0.5.3)(vue@3.5.14(typescript@5.8.3))
@@ -378,6 +393,9 @@ importers:
       aws-amplify:
         specifier: ^5.3.27
         version: 5.3.29(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0))
+      axios:
+        specifier: ^1.18.0
+        version: 1.18.0
       company-email-validator:
         specifier: ^1.1.0
         version: 1.2.0
@@ -510,6 +528,9 @@ importers:
       papaparse:
         specifier: ^5.5.2
         version: 5.5.3
+      pdfjs-dist:
+        specifier: 4.10.38
+        version: 4.10.38
       pdfobject:
         specifier: ^2.3.0
         version: 2.3.1
@@ -615,6 +636,15 @@ importers:
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+      y-prosemirror:
+        specifier: ^1.3.7
+        version: 1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32)
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.32)
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.32
       youtube-vue3:
         specifier: ^0.1.15
         version: 0.1.15(typescript@5.8.3)
@@ -1984,20 +2014,6 @@ packages:
 
   '@aws-amplify/storage@5.9.16':
     resolution: {integrity: sha512-Ck2h2D14Hw1HdBaJ4e/QWtknvE+Whnn8iHLndSo9Z9rCU0QK8arIYs2KogvggihRi0drT+3ykfsZfpZYco/WCg==}
-
-  '@aws-amplify/ui-vue@3.1.30':
-    resolution: {integrity: sha512-9hl5XjBFgV5dazgUXTNqJL0KqZbpE0odEtZjn+2Wa5z24p7KSbcbcrEy6ET1O6FOqnvNuRxbtP7m0iKnuMOPgg==}
-    peerDependencies:
-      aws-amplify: ^5.0.1
-
-  '@aws-amplify/ui@5.9.0':
-    resolution: {integrity: sha512-z0TqsoNN9wQcxdqyxb4CrYPHS+7wXaGkLPNT+zsptWcszBvbabMaXGFb/HZOPzesg6a+cWjYkZpn3WXb+eLpMA==}
-    peerDependencies:
-      aws-amplify: ^5.0.1
-      xstate: ^4.33.6
-    peerDependenciesMeta:
-      xstate:
-        optional: true
 
   '@aws-crypto/crc32@1.2.2':
     resolution: {integrity: sha512-8K0b1672qbv05chSoKpwGZ3fhvVp28Fg3AVHVkEHFl2lTLChO7wD/hTyyo8ING7uc31uZRt7bNra/hA74Td7Tw==}
@@ -3386,6 +3402,21 @@ packages:
   '@cloudflare/kv-asset-handler@0.4.2':
     resolution: {integrity: sha512-SIOD2DxrRRwQ+jgzlXCqoEFiKOFqaPjhnNTGKXSRLvp1HiOvapLaFG2kEr9dYQTYe8rKrd9uvDUzmAITeNyaHQ==}
     engines: {node: '>=18.0.0'}
+
+  '@codemirror/autocomplete@6.20.3':
+    resolution: {integrity: sha512-tlosUqb+3BbxCxZdu4tKeRghPFC+QM7q4X5YhKV2eCmPG+1r2F3f4AaSz5sCrFqUtX4Jh20VFTKecl16MgiV9g==}
+
+  '@codemirror/commands@6.11.1':
+    resolution: {integrity: sha512-O/4hG3SC1YwcmQ0d2UVNDs+AsaNWd1iHVxbTeEBuqH+6bExAiPK3iS/BvpY6rZGURALv4ZD3sIgcCmRvw3ehBg==}
+
+  '@codemirror/language@6.12.4':
+    resolution: {integrity: sha512-1q4PaT+o6PbgpkJt4Q8Fv5XJxTy4FUZ4MWETtyiDw3J0Pyr9E2vqcKL+k9wcvjNTIsauxvE7OfmWj3FRPHQ76A==}
+
+  '@codemirror/state@6.7.6':
+    resolution: {integrity: sha512-kAz+AncRtKuIknedxT1bq4XwXv4UowhbkHU1myPrtVb/jZtImWuV5BXzv5vK6i3kYACsdiZiQKFQQ5Mq7elW8w==}
+
+  '@codemirror/view@6.43.13':
+    resolution: {integrity: sha512-sihaFrUzAsYBQsL9J2t69y8nfMQGwcYmggAZsk+kjPbjYZMyuf2hU8tUNTZ+P+isb6XRr8JE22TZlJxBoVdH1A==}
 
   '@colordx/core@5.5.0':
     resolution: {integrity: sha512-3PxTH8itZzltK0U9jTwVVnjLXvnDYuq3m+QXsHkENxWiPRh4WaoLcs1SQjqgZ55kS+QyirpH5BVwzP2gMVG6EQ==}
@@ -4941,6 +4972,15 @@ packages:
   '@kwsites/promise-deferred@1.1.1':
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
 
+  '@lezer/common@1.5.3':
+    resolution: {integrity: sha512-H0iErY4e43LpXbYDyBci5W4v/RwTgGV3YzYOlJPiGZ8RY8w51kVE+xLn1tg3Z6UmSfyETvtsUK3r7YsgDQEI7Q==}
+
+  '@lezer/highlight@1.2.5':
+    resolution: {integrity: sha512-O1GMVKgtf5YspFaRzpmqkVgMtIk2HG9uMAbH6wdAIdNh3TVzCsch/+cRi+6l2//UGDKe6NB9BW3cvuR5ezMQ0w==}
+
+  '@lezer/lr@1.4.10':
+    resolution: {integrity: sha512-rnCpTIBafOx4mRp43xOxDJbFipJm/c0cia/V5TiGlhmMa+wsSdoGmUN3w5Bqrks/09Q/D4tNAmWaT8p6NRi77A==}
+
   '@linear/sdk@40.0.0':
     resolution: {integrity: sha512-R4lyDIivdi00fO+DYPs7gWNX221dkPJhgDowFrsfos/rNG6o5HixsCPgwXWtKN0GA0nlqLvFTmzvzLXpud1xKw==}
     engines: {node: '>=12.x', yarn: 1.x}
@@ -4957,6 +4997,9 @@ packages:
     resolution: {integrity: sha512-llMXd39jtP0HpQLVI37Bf1m2ADlEb35GYSh1SDSLsBhR+5iCxiNGlT31yqbNtVHygHAtMy6dWFERpU2JgufhPg==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@marijn/find-cluster-break@1.0.4':
+    resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
   '@microsoft/microsoft-graph-client@3.0.7':
     resolution: {integrity: sha512-/AazAV/F+HK4LIywF9C+NYHcJo038zEnWkteilcxC1FM/uK/4NVGDKGrxx7nNq1ybspAroRKT4I1FHfxQzxkUw==}
@@ -8055,6 +8098,19 @@ packages:
     peerDependencies:
       '@tiptap/core': ^2.7.0
 
+  '@tiptap/extension-collaboration-cursor@2.11.5':
+    resolution: {integrity: sha512-sazBzi5HCHgGRihSzWHhHFMSI9oU0v/qqiDZYJ/zhzCKEWONx8WlS6WTxo6z3l6/Qz9lm7clmHNUQNWxnssAOA==}
+    peerDependencies:
+      '@tiptap/core': ^2.7.0
+      y-prosemirror: ^1.2.11
+
+  '@tiptap/extension-collaboration@2.11.5':
+    resolution: {integrity: sha512-3tMMq0E+FM3/3YBUMq5rLvks2DC/t1XLH2Kz/VcuVCxqg1Zg5s9nKOl6CcUZ8gbdvZoEd/GYoQyROJ957v9wzw==}
+    peerDependencies:
+      '@tiptap/core': ^2.7.0
+      '@tiptap/pm': ^2.7.0
+      y-prosemirror: ^1.2.11
+
   '@tiptap/extension-color@2.27.2':
     resolution: {integrity: sha512-sOKCP8/2V3sRM3FdWgMe1lFE5ewsWNCRafiVoujS1+TTHGCj4jw6W+LiumBUk7cRI8kXW/rqGWVC4RVdknYUCA==}
     peerDependencies:
@@ -9099,14 +9155,6 @@ packages:
   '@vue/test-utils@2.4.6':
     resolution: {integrity: sha512-FMxEjOpYNYiFe0GkaHsnJPXFHxQ6m4t8vI/ElPGpMWxZKpmRvQ33OIrvRXemy6yha03RxhOlQuy+gZMC3CQSow==}
 
-  '@vue/tsconfig@0.1.3':
-    resolution: {integrity: sha512-kQVsh8yyWPvHpb8gIc9l/HIDiiVUy1amynLNpCy8p+FoCiZXCo6fQos5/097MmnNZc9AtseDsCrfkhqCrJ8Olg==}
-    peerDependencies:
-      '@types/node': '*'
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-
   '@vuelidate/core@2.0.3':
     resolution: {integrity: sha512-AN6l7KF7+mEfyWG0doT96z+47ljwPpZfi9/JrNMkOGLFv27XVZvKzRLXlmDPQjPl/wOB1GNnHuc54jlCLRNqGA==}
     peerDependencies:
@@ -9135,17 +9183,6 @@ packages:
     resolution: {integrity: sha512-ts3regBQyURfCE2BcytLqzm8+MmLlo5Ln/KLoxDVcsZ2gzIwVNnQpQOL/UKV8alUqjSZOlpFZcRNsLRqj+OzyA==}
     peerDependencies:
       vue: 3.5.14
-
-  '@vueuse/core@7.5.5':
-    resolution: {integrity: sha512-RBDqmIoGfak4h3xdXa/Av+ibkb8NY044wEy6+PG2FAWNaID8/FkqmSFjbxogrbmpSX1yZ1PBHrM8DUp/FrIpbg==}
-    peerDependencies:
-      '@vue/composition-api': ^1.1.0
-      vue: 3.5.14
-    peerDependenciesMeta:
-      '@vue/composition-api':
-        optional: true
-      vue:
-        optional: true
 
   '@vueuse/integrations@10.11.1':
     resolution: {integrity: sha512-Y5hCGBguN+vuVYTZmdd/IMXLOdfS60zAmDmFYc4BKBcMUPZH1n4tdyDECCPjXm0bNT3ZRUy1xzTLGaUje8Xyaw==}
@@ -9213,17 +9250,6 @@ packages:
     peerDependencies:
       vue: 3.5.14
 
-  '@vueuse/shared@7.5.5':
-    resolution: {integrity: sha512-mzzTsotHQRPnPAChy8iCv6ek/90CKYhAFyMRgNsMxpT0afZJkbMO/X0OaOu/1NuGbgb8UVjlsWKmCUgKTOF5hA==}
-    peerDependencies:
-      '@vue/composition-api': ^1.1.0
-      vue: 3.5.14
-    peerDependenciesMeta:
-      '@vue/composition-api':
-        optional: true
-      vue:
-        optional: true
-
   '@vvo/tzdb@6.183.0':
     resolution: {integrity: sha512-6C/4Lvv7jVHkfAsIEOMccZ4w1zmGAQxUVfdjZiYNu68+NMrFBVKyZZnmXeOWySihqDPxjO7FEbOpBuAf/ASKpg==}
 
@@ -9287,18 +9313,6 @@ packages:
   '@xmldom/xmldom@0.9.12':
     resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
     engines: {node: '>=14.6'}
-
-  '@xstate/vue@0.8.1':
-    resolution: {integrity: sha512-m4Ejd08eUHzlTD7P6aGscwpjeHRXVZQ5iVyv5RxYi5WKoFqOMeurO2dxvI8QDfTxF27NqODj30LWYsMzZZ9lsg==}
-    peerDependencies:
-      '@xstate/fsm': ^1.0.0
-      vue: 3.5.14
-      xstate: ^4.7.8
-    peerDependenciesMeta:
-      '@xstate/fsm':
-        optional: true
-      xstate:
-        optional: true
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -11401,9 +11415,6 @@ packages:
   enabled@2.0.0:
     resolution: {integrity: sha512-AKrN98kuwOzMIdAizXGI86UFBoo26CL21UM763y1h/GMSJ4/OHU9k2YlsmBpyScFo/wbLzWQJBMCW4+IO3/+OQ==}
 
-  encode-utf8@1.0.3:
-    resolution: {integrity: sha512-ucAnuBEhUK4boH2HjVYG5Q2mQyPorvv0u/ocS+zhdw0S8AlHYY+GOFhP1Gio5z4icpP2ivFSvhtFjQi8+T9ppw==}
-
   encodeurl@1.0.2:
     resolution: {integrity: sha512-TPJXq8JqFaVYm2CWmPvnP2Iyo4ZSM7/QKcSmuMLDObfpH5fi7RUGmd/rTDf+rut/saiDiQEeVTNgAmJEdAOx0w==}
     engines: {node: '>= 0.8'}
@@ -12159,10 +12170,6 @@ packages:
 
   form-data@3.0.4:
     resolution: {integrity: sha512-f0cRzm6dkyVYV3nPoooP8XlccPQukegwhAnpoLcXy+X+A8KfpGOoXwDr9FLZd3wzgLaBGQBE3lY93Zm/i1JvIQ==}
-    engines: {node: '>= 6'}
-
-  form-data@4.0.5:
-    resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
 
   form-data@4.0.6:
@@ -13366,6 +13373,9 @@ packages:
     peerDependencies:
       ws: ^8.21.0
 
+  isomorphic.js@0.2.5:
+    resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
+
   isstream@0.1.2:
     resolution: {integrity: sha512-Yljz7ffyPbrLpLngrMtZ7NduUgVvi6wG9RJ9IUcyCd59YQ911PBJphODUcbOVbqYfxe1wuYf/LJ8PauMRwsM/g==}
 
@@ -13862,6 +13872,11 @@ packages:
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
+
+  lib0@0.2.117:
+    resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   libnpmaccess@10.0.3:
     resolution: {integrity: sha512-JPHTfWJxIK+NVPdNMNGnkz4XGX56iijPbe0qFWbdt68HL+kIvSzh+euBL8npLZvl2fpaxo+1eZSdoG15f5YdIQ==}
@@ -15726,6 +15741,10 @@ packages:
     resolution: {integrity: sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==}
     engines: {node: '>=6.8.1'}
 
+  pdfjs-dist@4.10.38:
+    resolution: {integrity: sha512-/Y3fcFrXEAsMjJXeL9J8+ZG9U01LbuWaYypvDW2ycW1jL269L3js3DVBjDJ0Up9Np1uqDXsDrRihHANhZOlwdQ==}
+    engines: {node: '>=20'}
+
   pdfjs-dist@5.4.54:
     resolution: {integrity: sha512-TBAiTfQw89gU/Z4LW98Vahzd2/LoCFprVGvGbTgFt+QCB1F+woyOPmNNVgLa6djX9Z9GGTnj7qE1UzpOVJiINw==}
     engines: {node: '>=20.16.0 || >=22.3.0'}
@@ -16320,11 +16339,6 @@ packages:
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
 
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
-
-  qrcode@1.5.0:
-    resolution: {integrity: sha512-9MgRpgVc+/+47dFvQeD6U2s0Z92EsKzcHogtum4QB+UNd025WOJSHvn/hjk9xmzj7Stj95CyUAs31mrjxliEsQ==}
-    engines: {node: '>=10.13.0'}
-    hasBin: true
 
   qrcode@1.5.4:
     resolution: {integrity: sha512-1ca71Zgiu6ORjHqFBDpnSMTR2ReToX4l1Au1VFLyVeBTFavzQnv5JxMFr3ukHVKpSrSA2MCk0lNJSykjUfz7Zg==}
@@ -17477,10 +17491,8 @@ packages:
   stubs@3.0.0:
     resolution: {integrity: sha512-PdHt7hHUJKxvTCgbKX9C1V/ftOcjJQgz8BZwNfV5c4B6dcGqlpelTbJ999jBGZ2jYiPAwcX5dP6oBwVlBlUbxw==}
 
-  style-dictionary@3.9.1:
-    resolution: {integrity: sha512-odyTC7wMYE4B3VOhc3LW1g0PCz9g+0WZZt5qp8KpWP9POlhw0+8MYiPQYwYfBmu4MEs1qbZ+GHySu4TTjQPH9A==}
-    engines: {node: '>=12.0.0'}
-    hasBin: true
+  style-mod@4.1.4:
+    resolution: {integrity: sha512-XXWIQt633/EpAFx8aZDOTjBzrCaGmhvEQlQo6MVPfa2OzO2cWo+4hV9h+6UkHYlXGfy+ODXKUdP7Pthmcu5ATw==}
 
   style-value-types@5.1.2:
     resolution: {integrity: sha512-Vs9fNreYF9j6W2VvuDTP7kepALi7sk0xtk2Tu8Yxi9UoajJdEVpNpCov0HsLTqXvNGKX+Uv09pkozVITi1jf3Q==}
@@ -17954,9 +17966,6 @@ packages:
 
   tslib@2.4.0:
     resolution: {integrity: sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==}
-
-  tslib@2.4.1:
-    resolution: {integrity: sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==}
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
@@ -19162,15 +19171,28 @@ packages:
     engines: {node: '>= 0.10.0'}
     hasBin: true
 
-  xstate@4.38.3:
-    resolution: {integrity: sha512-SH7nAaaPQx57dx6qvfcIgqKRXIh4L0A1iYEqim4s1u7c9VoCgzZc+63FY90AKU4ZzOC2cfJzTnpO4zK7fCUzzw==}
-
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
 
   xxhashjs@0.2.2:
     resolution: {integrity: sha512-AkTuIuVTET12tpsVIQo+ZU6f/qDmKuRUcjaqR+OIvm+aCBsZ95i7UVY5WJ9TMsSaZ0DA2WxoZ4acu0sPH+OKAw==}
+
+  y-prosemirror@1.3.7:
+    resolution: {integrity: sha512-NpM99WSdD4Fx4if5xOMDpPtU3oAmTSjlzh5U4353ABbRHl1HtAFUx6HlebLZfyFxXN9jzKMDkVbcRjqOZVkYQg==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      prosemirror-model: ^1.7.1
+      prosemirror-state: ^1.2.3
+      prosemirror-view: ^1.9.10
+      y-protocols: ^1.0.1
+      yjs: ^13.5.38
+
+  y-protocols@1.0.7:
+    resolution: {integrity: sha512-YSVsLoXxO67J6eE/nV4AtFtT3QEotZf5sK5BHxFBXso7VDUT3Tx07IfA6hsu5Q5OmBdMkQVmFZ9QOA7fikWvnw==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      yjs: ^13.0.0
 
   y18n@4.0.3:
     resolution: {integrity: sha512-JKhqTOwSrqNA1NY5lSztJ1GrBiUodLMmIZuLiDaMRJ+itFd+ABVE8XBjOvIWL+rSqNDC74LCSFmlb/U4UZ4hJQ==}
@@ -19237,6 +19259,10 @@ packages:
   year@0.2.1:
     resolution: {integrity: sha512-9GnJUZ0QM4OgXuOzsKNzTJ5EOkums1Xc+3YQXp+Q+UxFjf7zLucp9dQ8QMIft0Szs1E1hUiXFim1OYfEKFq97w==}
     engines: {node: '>=0.8'}
+
+  yjs@13.6.32:
+    resolution: {integrity: sha512-lfiJIIC4Xayt5ItynE407ehlE03pCjeOc4hkR4yxxvvNJ4kuiN25B0g+Qp8XagYz361LLL7DCzR5bvFJ81QKtQ==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
@@ -19865,32 +19891,6 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - react-native
-
-  '@aws-amplify/ui-vue@3.1.30(@types/node@22.15.23)(aws-amplify@5.3.29(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0)))(vue@3.5.14(typescript@5.8.3))':
-    dependencies:
-      '@aws-amplify/ui': 5.9.0(aws-amplify@5.3.29(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0)))(xstate@4.38.3)
-      '@vue/tsconfig': 0.1.3(@types/node@22.15.23)
-      '@vueuse/core': 7.5.5(vue@3.5.14(typescript@5.8.3))
-      '@xstate/vue': 0.8.1(vue@3.5.14(typescript@5.8.3))(xstate@4.38.3)
-      aws-amplify: 5.3.29(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0))
-      nanoid: 5.1.5
-      qrcode: 1.5.0
-      xstate: 4.38.3
-    transitivePeerDependencies:
-      - '@types/node'
-      - '@vue/composition-api'
-      - '@xstate/fsm'
-      - vue
-
-  '@aws-amplify/ui@5.9.0(aws-amplify@5.3.29(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0)))(xstate@4.38.3)':
-    dependencies:
-      aws-amplify: 5.3.29(encoding@0.1.13)(react-native@0.83.1(@babel/core@7.29.7)(react@19.1.0))
-      csstype: 3.1.3
-      lodash: 4.18.1
-      style-dictionary: 3.9.1
-      tslib: 2.4.1
-    optionalDependencies:
-      xstate: 4.38.3
 
   '@aws-crypto/crc32@1.2.2':
     dependencies:
@@ -23039,6 +23039,40 @@ snapshots:
 
   '@cloudflare/kv-asset-handler@0.4.2': {}
 
+  '@codemirror/autocomplete@6.20.3':
+    dependencies:
+      '@codemirror/language': 6.12.4
+      '@codemirror/state': 6.7.6
+      '@codemirror/view': 6.43.13
+      '@lezer/common': 1.5.3
+
+  '@codemirror/commands@6.11.1':
+    dependencies:
+      '@codemirror/language': 6.12.4
+      '@codemirror/state': 6.7.6
+      '@codemirror/view': 6.43.13
+      '@lezer/common': 1.5.3
+
+  '@codemirror/language@6.12.4':
+    dependencies:
+      '@codemirror/state': 6.7.6
+      '@codemirror/view': 6.43.13
+      '@lezer/common': 1.5.3
+      '@lezer/highlight': 1.2.5
+      '@lezer/lr': 1.4.10
+      style-mod: 4.1.4
+
+  '@codemirror/state@6.7.6':
+    dependencies:
+      '@marijn/find-cluster-break': 1.0.4
+
+  '@codemirror/view@6.43.13':
+    dependencies:
+      '@codemirror/state': 6.7.6
+      crelt: 1.0.6
+      style-mod: 4.1.4
+      w3c-keyname: 2.2.8
+
   '@colordx/core@5.5.0': {}
 
   '@colors/colors@1.5.0':
@@ -24558,6 +24592,16 @@ snapshots:
 
   '@kwsites/promise-deferred@1.1.1': {}
 
+  '@lezer/common@1.5.3': {}
+
+  '@lezer/highlight@1.2.5':
+    dependencies:
+      '@lezer/common': 1.5.3
+
+  '@lezer/lr@1.4.10':
+    dependencies:
+      '@lezer/common': 1.5.3
+
   '@linear/sdk@40.0.0(encoding@0.1.13)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@15.10.1)
@@ -24595,6 +24639,8 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  '@marijn/find-cluster-break@1.0.4': {}
 
   '@microsoft/microsoft-graph-client@3.0.7':
     dependencies:
@@ -28251,6 +28297,17 @@ snapshots:
     dependencies:
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
 
+  '@tiptap/extension-collaboration-cursor@2.11.5(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(y-prosemirror@1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32))':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      y-prosemirror: 1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32)
+
+  '@tiptap/extension-collaboration@2.11.5(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(y-prosemirror@1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32))':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
+      y-prosemirror: 1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32)
+
   '@tiptap/extension-color@2.27.2(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/extension-text-style@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0)))':
     dependencies:
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
@@ -28789,7 +28846,7 @@ snapshots:
       '@types/caseless': 0.12.5
       '@types/node': 22.15.23
       '@types/tough-cookie': 4.0.5
-      form-data: 4.0.5
+      form-data: 4.0.6
 
   '@types/resolve@1.20.2': {}
 
@@ -29659,10 +29716,6 @@ snapshots:
       js-beautify: 1.15.4
       vue-component-type-helpers: 2.2.10
 
-  '@vue/tsconfig@0.1.3(@types/node@22.15.23)':
-    optionalDependencies:
-      '@types/node': 22.15.23
-
   '@vuelidate/core@2.0.3(vue@3.5.14(typescript@5.8.3))':
     dependencies:
       vue: 3.5.14(typescript@5.8.3)
@@ -29699,21 +29752,14 @@ snapshots:
       '@vueuse/shared': 13.9.0(vue@3.5.14(typescript@5.8.3))
       vue: 3.5.14(typescript@5.8.3)
 
-  '@vueuse/core@7.5.5(vue@3.5.14(typescript@5.8.3))':
-    dependencies:
-      '@vueuse/shared': 7.5.5(vue@3.5.14(typescript@5.8.3))
-      vue-demi: 0.14.10(vue@3.5.14(typescript@5.8.3))
-    optionalDependencies:
-      vue: 3.5.14(typescript@5.8.3)
-
-  '@vueuse/integrations@10.11.1(async-validator@4.2.5)(axios@1.18.1)(change-case@4.1.2)(fuse.js@6.6.2)(jwt-decode@3.1.2)(qrcode@1.5.4)(sortablejs@1.15.6)(vue@3.5.14(typescript@5.8.3))':
+  '@vueuse/integrations@10.11.1(async-validator@4.2.5)(axios@1.18.0)(change-case@4.1.2)(fuse.js@6.6.2)(jwt-decode@3.1.2)(qrcode@1.5.4)(sortablejs@1.15.6)(vue@3.5.14(typescript@5.8.3))':
     dependencies:
       '@vueuse/core': 10.11.1(vue@3.5.14(typescript@5.8.3))
       '@vueuse/shared': 10.11.1(vue@3.5.14(typescript@5.8.3))
       vue-demi: 0.14.10(vue@3.5.14(typescript@5.8.3))
     optionalDependencies:
       async-validator: 4.2.5
-      axios: 1.18.1(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      axios: 1.18.0
       change-case: 4.1.2
       fuse.js: 6.6.2
       jwt-decode: 3.1.2
@@ -29762,12 +29808,6 @@ snapshots:
 
   '@vueuse/shared@13.9.0(vue@3.5.14(typescript@5.8.3))':
     dependencies:
-      vue: 3.5.14(typescript@5.8.3)
-
-  '@vueuse/shared@7.5.5(vue@3.5.14(typescript@5.8.3))':
-    dependencies:
-      vue-demi: 0.14.10(vue@3.5.14(typescript@5.8.3))
-    optionalDependencies:
       vue: 3.5.14(typescript@5.8.3)
 
   '@vvo/tzdb@6.183.0': {}
@@ -29855,12 +29895,6 @@ snapshots:
   '@xmldom/xmldom@0.8.15': {}
 
   '@xmldom/xmldom@0.9.12': {}
-
-  '@xstate/vue@0.8.1(vue@3.5.14(typescript@5.8.3))(xstate@4.38.3)':
-    dependencies:
-      vue: 3.5.14(typescript@5.8.3)
-    optionalDependencies:
-      xstate: 4.38.3
 
   '@xtuc/ieee754@1.2.0': {}
 
@@ -30897,6 +30931,7 @@ snapshots:
     dependencies:
       pascal-case: 3.1.2
       tslib: 2.8.1
+    optional: true
 
   camelcase-keys@6.2.2:
     dependencies:
@@ -30929,6 +30964,7 @@ snapshots:
       no-case: 3.0.4
       tslib: 2.8.1
       upper-case-first: 2.0.2
+    optional: true
 
   caseless@0.12.0: {}
 
@@ -30986,6 +31022,7 @@ snapshots:
       sentence-case: 3.0.4
       snake-case: 3.0.4
       tslib: 2.8.1
+    optional: true
 
   char-regex@1.0.2: {}
 
@@ -31362,6 +31399,7 @@ snapshots:
       no-case: 3.0.4
       tslib: 2.8.1
       upper-case: 2.0.2
+    optional: true
 
   content-disposition@0.5.4:
     dependencies:
@@ -32108,6 +32146,7 @@ snapshots:
     dependencies:
       no-case: 3.0.4
       tslib: 2.8.1
+    optional: true
 
   dot-prop@10.1.0:
     dependencies:
@@ -32231,8 +32270,6 @@ snapshots:
   emojis-list@3.0.0: {}
 
   enabled@2.0.0: {}
-
-  encode-utf8@1.0.3: {}
 
   encodeurl@1.0.2: {}
 
@@ -33315,14 +33352,6 @@ snapshots:
       hasown: 2.0.4
       mime-types: 2.1.35
 
-  form-data@4.0.5:
-    dependencies:
-      asynckit: 0.4.0
-      combined-stream: 1.0.8
-      es-set-tostringtag: 2.1.0
-      hasown: 2.0.4
-      mime-types: 2.1.35
-
   form-data@4.0.6:
     dependencies:
       asynckit: 0.4.0
@@ -33963,6 +33992,7 @@ snapshots:
     dependencies:
       capital-case: 1.0.4
       tslib: 2.8.1
+    optional: true
 
   help-me@5.0.0: {}
 
@@ -34667,6 +34697,8 @@ snapshots:
   isomorphic-ws@4.0.1(ws@8.21.3):
     dependencies:
       ws: 8.21.3
+
+  isomorphic.js@0.2.5: {}
 
   isstream@0.1.2: {}
 
@@ -35463,6 +35495,10 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
+  lib0@0.2.117:
+    dependencies:
+      isomorphic.js: 0.2.5
+
   libnpmaccess@10.0.3:
     dependencies:
       npm-package-arg: 13.0.1
@@ -35743,6 +35779,7 @@ snapshots:
   lower-case@2.0.2:
     dependencies:
       tslib: 2.8.1
+    optional: true
 
   lowlight@3.3.0:
     dependencies:
@@ -36885,6 +36922,7 @@ snapshots:
     dependencies:
       lower-case: 2.0.2
       tslib: 2.8.1
+    optional: true
 
   nock@14.0.6:
     dependencies:
@@ -37875,6 +37913,7 @@ snapshots:
     dependencies:
       dot-case: 3.0.4
       tslib: 2.8.1
+    optional: true
 
   parent-module@1.0.1:
     dependencies:
@@ -37936,6 +37975,7 @@ snapshots:
     dependencies:
       no-case: 3.0.4
       tslib: 2.8.1
+    optional: true
 
   passport-custom@1.1.1:
     dependencies:
@@ -37989,6 +38029,7 @@ snapshots:
     dependencies:
       dot-case: 3.0.4
       tslib: 2.8.1
+    optional: true
 
   path-exists@3.0.0: {}
 
@@ -38047,6 +38088,10 @@ snapshots:
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
+
+  pdfjs-dist@4.10.38:
+    optionalDependencies:
+      '@napi-rs/canvas': 0.1.77
 
   pdfjs-dist@5.4.54:
     optionalDependencies:
@@ -38701,13 +38746,6 @@ snapshots:
   pure-rand@6.1.0: {}
 
   q@1.5.1: {}
-
-  qrcode@1.5.0:
-    dependencies:
-      dijkstrajs: 1.0.3
-      encode-utf8: 1.0.3
-      pngjs: 5.0.0
-      yargs: 15.4.1
 
   qrcode@1.5.4:
     dependencies:
@@ -39490,6 +39528,7 @@ snapshots:
       no-case: 3.0.4
       tslib: 2.8.1
       upper-case-first: 2.0.2
+    optional: true
 
   serialize-error@2.1.0: {}
 
@@ -39748,6 +39787,7 @@ snapshots:
     dependencies:
       dot-case: 3.0.4
       tslib: 2.8.1
+    optional: true
 
   snowflake-sdk@2.3.3(asn1.js@5.4.1)(debug@4.4.1)(encoding@0.1.13):
     dependencies:
@@ -40166,17 +40206,7 @@ snapshots:
 
   stubs@3.0.0: {}
 
-  style-dictionary@3.9.1:
-    dependencies:
-      chalk: 4.1.2
-      change-case: 4.1.2
-      commander: 8.3.0
-      fs-extra: 10.1.0
-      glob: 10.5.0
-      json5: 2.2.3
-      jsonc-parser: 3.3.1
-      lodash: 4.18.1
-      tinycolor2: 1.6.0
+  style-mod@4.1.4: {}
 
   style-value-types@5.1.2:
     dependencies:
@@ -40678,8 +40708,6 @@ snapshots:
   tslib@2.3.0: {}
 
   tslib@2.4.0: {}
-
-  tslib@2.4.1: {}
 
   tslib@2.8.1: {}
 
@@ -41214,10 +41242,12 @@ snapshots:
   upper-case-first@2.0.2:
     dependencies:
       tslib: 2.8.1
+    optional: true
 
   upper-case@2.0.2:
     dependencies:
       tslib: 2.8.1
+    optional: true
 
   uqr@0.1.3: {}
 
@@ -41949,14 +41979,26 @@ snapshots:
       cssfilter: 0.0.10
     optional: true
 
-  xstate@4.38.3: {}
-
   xtend@4.0.2: {}
 
   xxhashjs@0.2.2:
     dependencies:
       cuint: 0.2.2
     optional: true
+
+  y-prosemirror@1.3.7(prosemirror-model@1.25.1)(prosemirror-state@1.4.3)(prosemirror-view@1.39.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32):
+    dependencies:
+      lib0: 0.2.117
+      prosemirror-model: 1.25.1
+      prosemirror-state: 1.4.3
+      prosemirror-view: 1.39.3
+      y-protocols: 1.0.7(yjs@13.6.32)
+      yjs: 13.6.32
+
+  y-protocols@1.0.7(yjs@13.6.32):
+    dependencies:
+      lib0: 0.2.117
+      yjs: 13.6.32
 
   y18n@4.0.3: {}
 
@@ -42037,6 +42079,10 @@ snapshots:
       yargs-parser: 22.0.0
 
   year@0.2.1: {}
+
+  yjs@13.6.32:
+    dependencies:
+      lib0: 0.2.117
 
   yocto-queue@0.1.0: {}
 

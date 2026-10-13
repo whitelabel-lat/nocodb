@@ -39,7 +39,11 @@ import { extractProps } from '~/helpers/extractProps';
 import deepClone from '~/helpers/deepClone';
 import { MailService } from '~/services/mail/mail.service';
 import { MailEvent } from '~/interface/Mail';
-import { sanitizeEmail } from '~/utils/emailUtils';
+import {
+  emailAliasNotAllowedMessage,
+  isEmailAlias,
+  sanitizeEmail,
+} from '~/utils/emailUtils';
 
 @Injectable()
 export class UsersService {
@@ -147,20 +151,32 @@ export class UsersService {
       password,
       email_verification_token,
       req,
+      invite_token,
+      display_name,
+      meta,
       is_invite = false,
       workspace_invite = false,
+      allowEmailAlias = false,
     }: {
       email: string;
       salt: any;
       password;
       email_verification_token;
       req: NcRequest;
+      invite_token?: string;
+      display_name?: string;
+      meta?: MetaType;
       is_invite?: boolean;
       workspace_invite?: boolean;
+      allowEmailAlias?: boolean;
     },
     ncMeta = Noco.ncMeta,
   ) {
     this.validateEmailPattern(email);
+
+    if (!allowEmailAlias && isEmailAlias(email)) {
+      NcError.badRequest(emailAliasNotAllowedMessage());
+    }
 
     let roles: string = OrgUserRoles.CREATOR;
 
@@ -193,6 +209,15 @@ export class UsersService {
         email_verification_token,
         roles,
         token_version,
+        invite_token,
+        // set expiry only when an invite token is present
+        invite_token_expires: invite_token
+          ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+          : null,
+        // `user_name` is deliberately not forwarded: it is absent from the CE
+        // User type, and neither edition's User.insert persists it.
+        display_name,
+        meta,
       },
       ncMeta,
     );
@@ -556,9 +581,9 @@ export class UsersService {
       NcError.badRequest(`Invalid email`);
     }
 
-    // Reject plus addressing (always abusive)
-    if (_email.split('@')[0].includes('+')) {
-      NcError.badRequest('Email aliases with "+" are not allowed');
+    // Reject aliases (always abusive) — also refuses accepting an invite made out to one
+    if (isEmailAlias(_email)) {
+      NcError.badRequest(emailAliasNotAllowedMessage());
     }
 
     const email = _email.toLowerCase();
@@ -566,8 +591,7 @@ export class UsersService {
     this.validateEmailPattern(email);
 
     // Check for existing user by canonical email to prevent alias abuse
-    let user =
-      (await User.getByCanonicalEmail(email)) || (await User.getByEmail(email));
+    let user = await User.getByCanonicalEmail(email);
 
     if (user) {
       if (token) {
@@ -582,6 +606,9 @@ export class UsersService {
         // todo : opening up signup for timebeing
         // return next(new Error(`Email '${email}' already registered`));
       }
+    } else if (await User.hasPendingInvite(token)) {
+      // e.g. an invite made out to an alias, which never resolves to this address
+      NcError.badRequest('This invite was sent to a different email address');
     }
 
     const salt = await promisify(bcrypt.genSalt)(10);
@@ -609,9 +636,7 @@ export class UsersService {
     } else {
       const { createdProject: _createdProject } = await withSignupClaim(
         email,
-        async () =>
-          (await User.getByCanonicalEmail(email)) ||
-          (await User.getByEmail(email)),
+        () => User.getByCanonicalEmail(email),
         () =>
           this.registerNewUserIfAllowed({
             email,
@@ -623,7 +648,8 @@ export class UsersService {
       );
       createdProject = _createdProject;
     }
-    user = await User.getByEmail(email);
+    // An accepted invite keeps the invited address, which may only match canonically
+    user = user ? await User.get(user.id) : await User.getByEmail(email);
 
     // TODO: Right now we are not actively enforcing email verification @pranavxc
     // so we are not sending email verification email

@@ -150,25 +150,29 @@ const filterDisabledTooltip = computed(() => {
   return t('msg.buttonConditionNotMet')
 })
 
+const buttonUrl = computed(() => {
+  const url = addMissingUrlSchma(cellValue.value?.url)
+
+  // if url params not encoded, encode them using encodeURI
+  try {
+    return decodeURI(url) === url ? encodeURI(url) : url
+  } catch {
+    return encodeURI(url)
+  }
+})
+
 const componentProps = computed(() => {
   const filterDisabled = !isFilterConditionMet.value
 
   if (column.value.colOptions.type === ButtonActionsType.Url) {
-    let url = addMissingUrlSchma(cellValue.value?.url)
-
-    // if url params not encoded, encode them using encodeURI
-    try {
-      url = decodeURI(url) === url ? encodeURI(url) : url
-    } catch {
-      url = encodeURI(url)
-    }
+    const url = buttonUrl.value
 
     const isValidUrl = isValidURL(url, { require_tld: !appInfo.value?.allowLocalUrl })
 
     invalidUrlTooltip.value = !isValidUrl ? t('msg.error.invalidURL') : ''
 
     return {
-      href: url,
+      href: getExternalLinkHref(url),
       target: '_blank',
       ...(column.value?.colOptions.error || !isValidUrl || filterDisabled ? { disabled: true } : {}),
     }
@@ -178,10 +182,20 @@ const componentProps = computed(() => {
         filterDisabled ||
         isPublic.value ||
         (isInterfaceUi.value && !interfaceDataApi?.triggerButtonHook) ||
-        !isUIAllowed('hookTrigger') ||
+        !isUIAllowed('buttonRun') ||
         isLoading.value ||
         !column.value.colOptions.fk_webhook_id ||
         !cellValue.value?.fk_webhook_id,
+    }
+  } else if (column.value.colOptions.type === ButtonActionsType.Workflow) {
+    return {
+      disabled:
+        filterDisabled ||
+        isPublic.value ||
+        (isInterfaceUi.value && !interfaceDataApi?.triggerButtonWorkflow) ||
+        !isUIAllowed('buttonRun') ||
+        isLoading.value ||
+        !column.value.colOptions.fk_workflow_id,
     }
   } else if (column.value.colOptions.type === ButtonActionsType.Script) {
     return {
@@ -231,26 +245,30 @@ const triggerAction = async () => {
   const colOptions = column.value.colOptions
   afterActionStatus.value = null
 
-  if (!colOptions.type) return
+  // A disabled <a> still fires click, and an active cell can route the click here.
+  if (!colOptions.type || componentProps.value?.disabled) return
 
   if (colOptions.type === ButtonActionsType.Url) {
-    confirmPageLeavingRedirect(componentProps.value?.href, componentProps.value?.target, appInfo.value?.allowLocalUrl)
-  } else if (colOptions.type === ButtonActionsType.Webhook) {
+    confirmPageLeavingRedirect(buttonUrl.value, componentProps.value?.target, appInfo.value?.allowLocalUrl)
+  } else if (colOptions.type === ButtonActionsType.Webhook || colOptions.type === ButtonActionsType.Workflow) {
     try {
       isLoading.value = true
 
-      if (interfaceDataApi?.triggerButtonHook) {
+      if (colOptions.type === ButtonActionsType.Webhook && interfaceDataApi?.triggerButtonHook) {
         await interfaceDataApi.triggerButtonHook({ rowId: rowId!.value, columnId: column.value.id as string })
+      } else if (colOptions.type === ButtonActionsType.Workflow && interfaceDataApi?.triggerButtonWorkflow) {
+        await interfaceDataApi.triggerButtonWorkflow({ rowId: rowId!.value, columnId: column.value.id as string })
       } else {
         await $api.internal.postOperation(
           meta.value!.fk_workspace_id!,
           meta.value!.base_id!,
           {
-            operation: 'hookTrigger',
-            hookId: cellValue.value?.fk_webhook_id,
+            operation: 'buttonRun',
+          },
+          {
+            columnId: column.value.id,
             rowId: rowId!.value,
           },
-          {},
         )
       }
 

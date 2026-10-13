@@ -98,7 +98,7 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
 
   const { api, isLoading } = useApi()
 
-  const { setMeta, getMeta, getMetaByKey } = useMetas()
+  const { setMeta, getMeta } = useMetas()
 
   const { isDark, getColor } = useTheme()
 
@@ -288,7 +288,13 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
       const _sharedViewMeta = (viewMeta as any).meta
       sharedViewMeta.value = (isString(_sharedViewMeta) ? JSON.parse(_sharedViewMeta) : _sharedViewMeta) ?? {}
 
-      await setMeta(viewMeta.model)
+      // Self-linking table: merge its trimmed relatedMetas copy — see useSharedView. #10931
+      const relatedMetas = { ...viewMeta.relatedMetas }
+      const model = viewMeta.model
+      if (model?.id) {
+        await setMeta(mergeProjectedMetaColumns(model, relatedMetas[model.id]))
+        delete relatedMetas[model.id]
+      }
 
       // if base is not defined then set it with an object containing source
       if (!base.value?.sources)
@@ -301,8 +307,6 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
             },
           ],
         })
-
-      const relatedMetas = { ...viewMeta.relatedMetas }
 
       Object.keys(relatedMetas).forEach((key) => setMeta(relatedMetas[key]))
 
@@ -332,8 +336,8 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
           ) {
             const defaultValue = typeof c.cdf === 'string' ? c.cdf.replace(/^['"]|['"]$/g, '') : c.cdf
             if ([UITypes.Number, UITypes.Duration, UITypes.Percent, UITypes.Currency, UITypes.Decimal].includes(c.uidt)) {
-              formState.value[c.title] = Number(defaultValue) || null
-              preFilledDefaultValueformState.value[c.title] = Number(defaultValue) || null
+              formState.value[c.title] = parseNumericDefault(defaultValue)
+              preFilledDefaultValueformState.value[c.title] = parseNumericDefault(defaultValue)
             } else if (c.uidt === UITypes.Checkbox) {
               if (['true', '1'].includes(String(defaultValue).toLowerCase())) {
                 formState.value[c.title] = true
@@ -542,8 +546,8 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
       const attachment: Record<string, any> = {}
 
       /** find attachments in form data */
-      const formMeta = getMetaByKey(sharedView.value?.base_id, sharedView.value?.fk_model_id as string)
-      for (const col of formMeta?.columns ?? []) {
+      // Use the view's own model: the meta store may hold a trimmed copy of this table.
+      for (const col of meta.value?.columns ?? []) {
         if (col.uidt === UITypes.Attachment) {
           if (col.title && data[col.title]) {
             attachment[`_${col.title}`] = data[col.title].map((item: { file: File }) => item.file)
@@ -563,6 +567,8 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
         data,
         ...attachment,
       })
+
+      keepClearedDefaults(filtedData.data, formState.value, preFilledDefaultValueformState.value)
 
       const newRecord = await api.public.dataCreate(sharedView.value!.uuid!, filtedData, {
         headers: {

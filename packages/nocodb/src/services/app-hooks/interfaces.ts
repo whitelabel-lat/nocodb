@@ -46,6 +46,9 @@ export interface InviteLinkEvent extends NcBaseEvent {
   link: InviteLinkType;
   base?: BaseType;
   workspace?: { id: string; title: string };
+  interface?: { id: string; title: string };
+  /** `team_title` is the team an app link adds people to. */
+  app?: { id: string; title: string; team_title?: string };
 }
 
 export interface InviteLinkUpdateEvent extends InviteLinkEvent {

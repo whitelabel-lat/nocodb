@@ -389,6 +389,8 @@ import NcXIcon from '~icons/nc-icons-v2/x.svg'
 import NcBarChartIcon from '~icons/nc-icons-v2/bar-chart.svg'
 import NcBarChartHorizontalIcon from '~icons/nc-icons-v2/bar-chart-horizontal.svg'
 import NcLockIcon from '~icons/nc-icons-v2/lock.svg'
+import NcArchiveIcon from '~icons/nc-icons-v2/archive.svg'
+import NcTagIcon from '~icons/nc-icons-v2/tag.svg'
 import NcLogInIcon from '~icons/nc-icons-v2/log-in.svg'
 import NcRefreshCwIcon from '~icons/nc-icons-v2/refresh-cw.svg'
 import NcChevronRightIcon from '~icons/nc-icons-v2/chevron-right.svg'
@@ -894,6 +896,7 @@ import NcDiscordForum from '~icons/nc-icons/discord-forum'
 import NcCrown from '~icons/nc-icons-v2/crown'
 import NcMultiCircle from '~icons/nc-icons-v2/multi-circle'
 import NcChatwoot from '~icons/nc-icons-v2/chatwoot'
+import NcYoutrack from '~icons/nc-icons-v2/youtrack'
 import NcGraduationCap from '~icons/nc-icons-v2/graduation-cap'
 import NcSupportAgent from '~icons/nc-icons-v2/support-agent'
 import NcBuilding from '~icons/nc-icons-v2/building'
@@ -1381,6 +1384,7 @@ export const iconMap = {
   'box': NcBox,
   'githubSolid': NcGithubSolid,
   'chatwoot': h(NcChatwoot, { stroke: 'transparent' }),
+  'youtrack': h(NcYoutrack, { stroke: 'transparent' }),
   'linear': NcLinear,
   'gitlab': NcGitlab,
   'googleCalendar': NcGoogleCalendar,
@@ -1543,6 +1547,8 @@ export const iconMap = {
   'ncBarChart': NcBarChartIcon,
   'ncBarChartHorizontal': NcBarChartHorizontalIcon,
   'ncLock': NcLockIcon,
+  'ncArchive': NcArchiveIcon,
+  'ncTag': NcTagIcon,
   'ncLogIn': NcLogInIcon,
   'ncRefreshCw': NcRefreshCwIcon,
   'ncChevronRight': NcChevronRightIcon,

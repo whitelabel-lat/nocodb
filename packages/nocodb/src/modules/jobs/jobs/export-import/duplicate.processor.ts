@@ -33,7 +33,10 @@ import { ColumnsService } from '~/services/columns.service';
 import { JobTypes } from '~/interface/Jobs';
 import { elapsedTime, initTime } from '~/modules/jobs/helpers';
 import { ExportService } from '~/modules/jobs/jobs/export-import/export.service';
-import { ImportService } from '~/modules/jobs/jobs/export-import/import.service';
+import {
+  IMPORT_BATCH_SIZE,
+  ImportService,
+} from '~/modules/jobs/jobs/export-import/import.service';
 import { AppHooksService } from '~/services/app-hooks/app-hooks.service';
 import { TablesService } from '~/services/tables.service';
 import { TelemetryService } from '~/services/telemetry.service';
@@ -105,6 +108,7 @@ export class DuplicateProcessor {
       excludeInterfaces?: boolean;
       excludeWorkflows?: boolean;
       excludeDocuments?: boolean;
+      excludePermissions?: boolean;
     };
     operation: JobTypes;
   }) {
@@ -230,6 +234,7 @@ export class DuplicateProcessor {
         : await this.exportService.serializeInterfaces(context, {
             idMap: exportModelMap,
             req,
+            excludePermissions: options.excludePermissions,
           });
 
       elapsedTime(
@@ -1185,7 +1190,7 @@ export class DuplicateProcessor {
                     }
                   }
                   chunk.push(row);
-                  if (chunk.length > 1000) {
+                  if (chunk.length >= IMPORT_BATCH_SIZE) {
                     parser.pause();
                     try {
                       // remove empty rows (only pk is present)
@@ -1199,6 +1204,7 @@ export class DuplicateProcessor {
                             body: chunk,
                             cookie: req,
                             raw: true,
+                            skipPayloadLimit: true,
                           },
                         );
                       }
@@ -1223,6 +1229,7 @@ export class DuplicateProcessor {
                       body: chunk,
                       cookie: req,
                       raw: true,
+                      skipPayloadLimit: true,
                     });
                   }
                 } catch (e) {

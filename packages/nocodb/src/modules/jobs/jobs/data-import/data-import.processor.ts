@@ -279,6 +279,7 @@ export class DataImportProcessor {
           valuesUnmatched,
           linksFailed,
           errorsCount,
+          tableIds: results.map((r) => r.tableId),
           ...(sampleError ? { sampleError } : {}),
         }),
         true,
@@ -811,6 +812,7 @@ export class DataImportProcessor {
         cookie: req,
         skip_hooks: skipHooks,
         raw: true,
+        skipPayloadLimit: true,
         ...(options.typecast ? { typecast: 'true' } : {}),
         ...(onInsertedPks ? { onInsertedPks } : {}),
       });

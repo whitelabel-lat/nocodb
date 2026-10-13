@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type {
   BoolType,
   COMPARISON_OPS,
@@ -28,6 +29,8 @@ import {
   setModelContext,
   throwMissingContext,
 } from '~/helpers/modelContext';
+
+const logger = new Logger('Filter');
 
 /**
  * Link flat filter rows into root filters with their `children` populated.
@@ -96,6 +99,8 @@ export default class Filter implements FilterType {
   // cross-table column. Carries the source/parent row PK so conditionV2 can
   // build an EXISTS subquery filtered to that specific row.
   _crossTableRowId?: string;
+  // Unsaved source row (no PK yet): its link values, sent by the picker.
+  _crossTableRowData?: Record<string, any>;
 
   comparison_op?: (typeof COMPARISON_OPS)[number];
   comparison_sub_op?: (typeof COMPARISON_SUB_OPS)[number];
@@ -166,7 +171,7 @@ export default class Filter implements FilterType {
 
   public static async insert(
     context: NcContext,
-    filter: Partial<FilterType & { meta?: any | string }>,
+    filter: Partial<FilterType & { meta?: any | string; fk_value_col_id?: string }>,
     ncMeta = Noco.ncMeta,
   ) {
     const insertObj = extractProps(filter, [
@@ -502,12 +507,39 @@ export default class Filter implements FilterType {
       id,
     );
 
-    ncMeta.knex.attachToTransaction(async () => {
-      await NocoCache.update(
-        context,
-        `${CacheScope.FILTER_EXP}:${id}`,
-        updateObj,
-      );
+    // Awaited on purpose: off a transaction `attachToTransaction` runs the
+    // callback inline, and the `this.get` below would otherwise read the
+    // pre-update row out of cache while this query is still in flight. On a
+    // transaction it queues and returns undefined, so awaiting is a no-op.
+    await ncMeta.knex.attachToTransaction(async () => {
+      // Merge the committed row rather than `updateObj`: `value` is a TEXT
+      // column, so the row the DB now holds is not the one the caller sent
+      // (100 vs "100"). Never del+set here - `set` rebuilds parentKeys from
+      // the existing wrapper, so dropping the key first would leave this
+      // filter with no child->parent pointers for `deepDel` to prune.
+      const cacheKey = `${CacheScope.FILTER_EXP}:${id}`;
+      try {
+        const cached = await NocoCache.get(
+          context,
+          cacheKey,
+          CacheGetType.TYPE_OBJECT,
+        );
+        if (!cached) return;
+
+        // Not `ncMeta`: queued callbacks drain after the commit, so a
+        // transactional `ncMeta` is already complete and would throw here.
+        // The row is committed by then, so the base connection sees it.
+        const row = await Noco.ncMeta.metaGet2(
+          context.workspace_id,
+          context.base_id,
+          MetaTable.FILTER_EXP,
+          { id },
+        );
+        if (row) await NocoCache.update(context, cacheKey, row);
+      } catch (e) {
+        // A stale cache entry must not fail the update that succeeded.
+        logger.error(`Failed to refresh filter cache for ${id}`, e);
+      }
     });
 
     // on update delete any optimised single query cache

@@ -19,6 +19,7 @@ import type {
   InviteLinkRole,
   InviteLinkType,
   InviteLinkUnusableReason,
+  ProjectUserReqType,
   WorkspaceUserRoles,
 } from 'nocodb-sdk';
 import type { NcContext, NcRequest } from '~/interface/config';
@@ -31,8 +32,23 @@ import { getProjectRolePower } from '~/utils/roleHelper';
 
 type InviteLinkGrant = Pick<
   InviteLinkType,
-  'scope' | 'base_id' | 'fk_workspace_id' | 'created_by' | 'role'
+  | 'scope'
+  | 'base_id'
+  | 'fk_workspace_id'
+  | 'fk_interface_id'
+  | 'fk_app_id'
+  | 'fk_app_team_id'
+  | 'created_by'
+  | 'role'
 >;
+
+/** Where a redeemer lands; also what `existingAccess` reports. */
+export interface InviteLinkLanding {
+  base_id?: string;
+  workspace_id?: string;
+  interface_id?: string;
+  app_id?: string;
+}
 
 /**
  * Shareable invite links.
@@ -155,6 +171,9 @@ export class InviteLinksService {
         link.scope,
         link.fk_workspace_id,
         link.base_id,
+        link.fk_interface_id,
+        link.fk_app_id,
+        link.fk_app_team_id,
         link.created_by,
       ].join(':');
 
@@ -328,13 +347,22 @@ export class InviteLinksService {
   ) {
     if (!this.isPrivateBase(base)) return;
 
+    if (!(await this.isMintedByOwner(context, base, link, ncMeta))) {
+      NcError.forbidden('Invite links are not available for a private base');
+    }
+  }
+
+  protected async isMintedByOwner(
+    context: NcContext,
+    base: Base,
+    link: InviteLink,
+    ncMeta = Noco.ncMeta,
+  ) {
     const minter = link.created_by
       ? await BaseUser.get(context, base.id, link.created_by, ncMeta)
       : null;
 
-    if (minter?.roles !== ProjectRoles.OWNER) {
-      NcError.forbidden('Invite links are not available for a private base');
-    }
+    return minter?.roles === ProjectRoles.OWNER;
   }
 
   async create(
@@ -343,6 +371,8 @@ export class InviteLinksService {
       scope: InviteLinkScope;
       baseId?: string;
       workspaceId?: string;
+      interfaceId?: string;
+      appId?: string;
       body: InviteLinkReqType;
       req: NcRequest;
     },
@@ -350,7 +380,11 @@ export class InviteLinksService {
   ) {
     this.assertRoleWithinCallerPower(param.scope, param.body.role, param.req);
 
-    if (param.scope === InviteLinkScope.BASE) {
+    if (
+      param.scope === InviteLinkScope.BASE ||
+      param.scope === InviteLinkScope.INTERFACE ||
+      param.scope === InviteLinkScope.APP
+    ) {
       const base = await this.assertBaseShareable(
         context,
         param.baseId,
@@ -363,11 +397,19 @@ export class InviteLinksService {
     const link = await InviteLink.insert(
       {
         scope: param.scope,
-        base_id: param.scope === InviteLinkScope.BASE ? param.baseId : null,
+        base_id:
+          param.scope === InviteLinkScope.WORKSPACE ? null : param.baseId,
         fk_workspace_id:
           param.scope === InviteLinkScope.WORKSPACE
             ? param.workspaceId
             : context.workspace_id,
+        fk_interface_id:
+          param.scope === InviteLinkScope.INTERFACE ? param.interfaceId : null,
+        fk_app_id: param.scope === InviteLinkScope.APP ? param.appId : null,
+        fk_app_team_id:
+          param.scope === InviteLinkScope.APP
+            ? param.body.fk_app_team_id
+            : null,
         role: param.body.role,
         email_domain: this.normaliseDomain(param.body.email_domain),
         expires_at: this.expiryFromDays(param.body.expires_in_days),
@@ -397,6 +439,8 @@ export class InviteLinksService {
       scope: InviteLinkScope;
       baseId?: string;
       workspaceId?: string;
+      interfaceId?: string;
+      appId?: string;
       req: NcRequest;
     },
     ncMeta = Noco.ncMeta,
@@ -406,6 +450,8 @@ export class InviteLinksService {
         scope: param.scope,
         base_id: param.baseId,
         fk_workspace_id: param.workspaceId,
+        fk_interface_id: param.interfaceId,
+        fk_app_id: param.appId,
       },
       ncMeta,
     );
@@ -450,11 +496,21 @@ export class InviteLinksService {
       ),
     );
 
-    links = links.map((l, i) =>
-      reasons[i] ? { ...l, usable: false, unusable_reason: reasons[i] } : l,
-    );
+    links = links.map((l, i) => {
+      // Spent or expired outranks the rest: nothing else would bring it back.
+      const spent = this.invalidReason(l);
+      const reason =
+        spent === 'exhausted' || spent === 'expired' ? spent : reasons[i];
 
-    if (param.scope !== InviteLinkScope.BASE) return links;
+      return reason ? { ...l, usable: false, unusable_reason: reason } : l;
+    });
+
+    if (
+      param.scope !== InviteLinkScope.BASE &&
+      param.scope !== InviteLinkScope.INTERFACE &&
+      param.scope !== InviteLinkScope.APP
+    )
+      return links;
 
     const baseContext = { ...context, base_id: param.baseId };
     const base = await Base.get(baseContext, param.baseId, ncMeta);
@@ -527,6 +583,8 @@ export class InviteLinksService {
       scope: InviteLinkScope;
       baseId?: string;
       workspaceId?: string;
+      interfaceId?: string;
+      appId?: string;
       req?: NcRequest;
     },
     ncMeta = Noco.ncMeta,
@@ -536,11 +594,26 @@ export class InviteLinksService {
     if (!link || link.revoked_at)
       NcError.genericNotFound('Invite link', param.linkId);
 
-    const owned =
-      param.scope === InviteLinkScope.BASE
-        ? link.scope === InviteLinkScope.BASE && link.base_id === param.baseId
-        : link.scope === InviteLinkScope.WORKSPACE &&
-          link.fk_workspace_id === param.workspaceId;
+    let owned = false;
+
+    if (link.scope === param.scope) {
+      switch (param.scope) {
+        case InviteLinkScope.BASE:
+          owned = link.base_id === param.baseId;
+          break;
+        case InviteLinkScope.INTERFACE:
+          owned =
+            link.base_id === param.baseId &&
+            link.fk_interface_id === param.interfaceId;
+          break;
+        case InviteLinkScope.APP:
+          owned =
+            link.base_id === param.baseId && link.fk_app_id === param.appId;
+          break;
+        default:
+          owned = link.fk_workspace_id === param.workspaceId;
+      }
+    }
 
     if (!owned) NcError.genericNotFound('Invite link', param.linkId);
 
@@ -564,6 +637,8 @@ export class InviteLinksService {
       scope: InviteLinkScope;
       baseId?: string;
       workspaceId?: string;
+      interfaceId?: string;
+      appId?: string;
       body: Partial<InviteLinkReqType>;
       req: NcRequest;
     },
@@ -579,6 +654,10 @@ export class InviteLinksService {
       param.linkId,
       {
         ...(param.body.role !== undefined ? { role: param.body.role } : {}),
+        ...(param.scope === InviteLinkScope.APP &&
+        param.body.fk_app_team_id !== undefined
+          ? { fk_app_team_id: param.body.fk_app_team_id }
+          : {}),
         ...(param.body.email_domain !== undefined
           ? { email_domain: this.normaliseDomain(param.body.email_domain) }
           : {}),
@@ -610,6 +689,8 @@ export class InviteLinksService {
       scope: InviteLinkScope;
       baseId?: string;
       workspaceId?: string;
+      interfaceId?: string;
+      appId?: string;
       req: NcRequest;
     },
     ncMeta = Noco.ncMeta,
@@ -647,7 +728,12 @@ export class InviteLinksService {
     }
   }
 
-  protected invalidReason(link: InviteLink | null) {
+  protected invalidReason(
+    link: Pick<
+      InviteLinkType,
+      'revoked_at' | 'expires_at' | 'max_uses' | 'used_count'
+    > | null,
+  ) {
     if (!link) return 'not_found' as const;
     if (link.revoked_at) return 'revoked' as const;
     if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
@@ -711,7 +797,17 @@ export class InviteLinksService {
       target_title: await this.resolveTargetTitle(context, link, ncMeta),
       role: link.role,
       email_domain: link.email_domain,
+      ...(await this.previewExtras(context, link, ncMeta)),
     };
+  }
+
+  /** Scope-specific preview fields. CE has none. */
+  protected async previewExtras(
+    _context: NcContext,
+    _link: InviteLink,
+    _ncMeta = Noco.ncMeta,
+  ): Promise<Partial<InviteLinkPreviewType>> {
+    return {};
   }
 
   /**
@@ -741,7 +837,7 @@ export class InviteLinksService {
     link: InviteLink,
     userId: string,
     ncMeta = Noco.ncMeta,
-  ): Promise<{ base_id?: string; workspace_id?: string } | null> {
+  ): Promise<InviteLinkLanding | null> {
     if (link.scope !== InviteLinkScope.BASE) return null;
 
     const existing = await BaseUser.get(
@@ -916,17 +1012,11 @@ export class InviteLinksService {
     context: NcContext,
     param: { link: InviteLink; user: User; req: NcRequest },
     ncMeta = Noco.ncMeta,
-  ): Promise<{
-    base_id?: string;
-    workspace_id?: string;
-    already_member?: boolean;
-  }> {
+  ): Promise<InviteLinkLanding & { already_member?: boolean }> {
     const { link, user } = param;
 
     if (link.scope !== InviteLinkScope.BASE) {
-      NcError.badRequest(
-        'Workspace invite links are not available in this edition',
-      );
+      NcError.badRequest('This invite link is not available in this edition');
     }
 
     const baseContext = {
@@ -972,8 +1062,8 @@ export class InviteLinksService {
       this.appHooksService.emit(AppEvents.PROJECT_USER_UPDATE, {
         base,
         user,
-        baseUser: { roles: link.role as ProjectRoles },
-        oldBaseUser: { roles: existing.roles as ProjectRoles },
+        baseUser: { roles: link.role } as Partial<ProjectUserReqType>,
+        oldBaseUser: { roles: existing.roles } as Partial<ProjectUserReqType>,
         via: 'invite_link',
         context: baseContext,
         req: param.req,

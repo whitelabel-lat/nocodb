@@ -559,8 +559,9 @@ const toggleIncludeUser = async () => {
     v-if="!isV3ModalOpen"
     v-model:visible="modalVisible"
     :show-separator="true"
-    size="large"
+    size="feature"
     width="min(90vw, 960px)"
+    nc-modal-class-name="!p-0"
     wrap-class-name="nc-modal-webhook-create-edit"
   >
     <template #header>
@@ -772,7 +773,7 @@ const toggleIncludeUser = async () => {
                       <LazyApiClientHeaders v-model="hookRef.notification.payload.headers" disabled />
                     </a-tab-pane>
 
-                    <a-tab-pane v-if="isBodyShown" key="body" tab="Body">
+                    <a-tab-pane v-if="isBodyShown" key="body" :tab="$t('labels.body')">
                       <div
                         style="
                           box-shadow: 0px 0px 4px 0px rgba(var(--rgb-base), 0.08), 0px 0px 4px 0px rgba(var(--rgb-base), 0.08);
@@ -947,7 +948,7 @@ const toggleIncludeUser = async () => {
               <div class="flex items-center justify-between -ml-1.5">
                 <NcButton type="text" class="mb-3" size="small" @click="toggleSamplePayload()">
                   <div class="flex items-center gap-3">
-                    Sample Payload
+                    {{ $t('labels.samplePayload') }}
                     <GeneralIcon
                       class="transition-transform"
                       :class="{
@@ -1031,12 +1032,6 @@ const toggleIncludeUser = async () => {
   a:not(.nc-link) {
     @apply !no-underline !text-nc-content-gray-subtle !hover:text-primary;
   }
-  .nc-modal {
-    @apply !p-0;
-    height: min(calc(100vh - 100px), 1024px);
-    max-height: min(calc(100vh - 100px), 1024px) !important;
-  }
-
   .nc-modal-header {
     @apply !mb-0 !pb-0;
   }

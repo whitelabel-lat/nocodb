@@ -7,12 +7,35 @@ import {
   WorkspaceUserRoles,
   inviteLinkRolesFor,
 } from 'nocodb-sdk'
+import type { IconMapKey } from '#imports'
 import { getI18n } from '~/plugins/a.i18n'
 
 export interface InviteLinkTarget {
   scope: InviteLinkScope
   baseId?: string
+  /** Also required for an interface target: its ops are routed by workspace. */
   workspaceId?: string
+  interfaceId?: string
+  appId?: string
+  /**
+   * App targets only: the teams a link may add people to, in picker order. An
+   * app link's "role" in this composable is a team id.
+   */
+  teams?: InviteLinkTeam[]
+  /**
+   * Interface targets only: the caller's role in the links' base-role
+   * vocabulary (`owner` for builders). Base and workspace read `useRoles`.
+   */
+  callerRole?: string | null
+}
+
+export interface InviteLinkTeam {
+  id: string
+  title: string
+  description?: string
+  icon?: IconMapKey
+  /** Holds no capabilities, so the people who join it cannot open the app. */
+  noAccess?: boolean
 }
 
 const basePath = (t: InviteLinkTarget) =>
@@ -21,13 +44,61 @@ const basePath = (t: InviteLinkTarget) =>
     : `/api/v2/meta/bases/${t.baseId}/invite-links`
 
 const sameTarget = (a: InviteLinkTarget | null, b: InviteLinkTarget) =>
-  !!a && a.scope === b.scope && a.baseId === b.baseId && a.workspaceId === b.workspaceId
+  !!a &&
+  a.scope === b.scope &&
+  a.baseId === b.baseId &&
+  a.workspaceId === b.workspaceId &&
+  a.interfaceId === b.interfaceId &&
+  a.appId === b.appId &&
+  a.callerRole === b.callerRole
+
+/** Role names that differ by scope: an interface calls viewer "Read only", as its members page does. */
+export function inviteLinkRoleLabels(scope?: InviteLinkScope | null): Partial<Record<string, string>> | undefined {
+  if (scope !== InviteLinkScope.INTERFACE) return undefined
+
+  const { t } = getI18n().global
+
+  return { [ProjectRoles.VIEWER]: t('labels.readOnlyAccess') }
+}
+
+/**
+ * How a role reads inside a sentence ("join as a read-only member"), where
+ * the picker's "Read only" label would not. Undefined means use the label.
+ */
+export function inviteLinkRolePhrase(
+  scope: InviteLinkScope | null | undefined,
+  role: string | undefined,
+  { count = 1, article = false }: { count?: number; article?: boolean } = {},
+) {
+  if (scope !== InviteLinkScope.INTERFACE || role !== ProjectRoles.VIEWER) return undefined
+
+  const { t } = getI18n().global
+
+  if (count > 1) return t('labels.readOnlyMembers')
+
+  return article ? t('labels.aReadOnlyMember') : t('labels.readOnlyMember')
+}
+
+const isTargetComplete = (t: InviteLinkTarget) => {
+  switch (t.scope) {
+    case InviteLinkScope.WORKSPACE:
+      return !!t.workspaceId
+    case InviteLinkScope.INTERFACE:
+      return !!(t.workspaceId && t.baseId && t.interfaceId)
+    case InviteLinkScope.APP:
+      return !!(t.workspaceId && t.baseId && t.appId)
+    default:
+      return !!t.baseId
+  }
+}
 
 // createGlobalState, not createSharedComposable: the hub unmounts this screen
 // every time it pushes into compose/links/edit, and a shared composable disposes
 // with its last consumer — which reset the list mid-flow.
 export const useInviteLinks = createGlobalState(() => {
   const { $api } = useNuxtApp()
+
+  const { internalGet } = useInternalBatch()
 
   const { user } = useGlobal()
 
@@ -47,12 +118,60 @@ export const useInviteLinks = createGlobalState(() => {
 
   const isWorkspaceScope = computed(() => scope.value === InviteLinkScope.WORKSPACE)
 
+  const isInterfaceScope = computed(() => scope.value === InviteLinkScope.INTERFACE)
+
+  const isAppScope = computed(() => scope.value === InviteLinkScope.APP)
+
+  const teams = computed(() => target.value?.teams ?? [])
+
+  const roleLabels = computed(() =>
+    isAppScope.value ? Object.fromEntries(teams.value.map((t) => [t.id, t.title])) : inviteLinkRoleLabels(scope.value),
+  )
+
+  /** App teams carry their own descriptions and icons; roles use the defaults. */
+  const roleDescriptions = computed(() =>
+    isAppScope.value ? Object.fromEntries(teams.value.map((t) => [t.id, t.description ?? ''])) : undefined,
+  )
+
+  const roleIcons = computed(() =>
+    isAppScope.value
+      ? (Object.fromEntries(teams.value.filter((t) => t.icon).map((t) => [t.id, t.icon])) as Partial<Record<string, IconMapKey>>)
+      : undefined,
+  )
+
+  /** What the picker shows for a link: its team for an app link, else its role. */
+  function linkGrant(link?: InviteLinkType | null) {
+    if (!link) return undefined
+
+    return isAppScope.value ? link.fk_app_team_id ?? undefined : link.role
+  }
+
+  /** App links: whether the team on offer opens nothing, so joining it is a dead end. */
+  function grantOpensNothing(value?: string | null) {
+    return isAppScope.value && !!teams.value.find((t) => t.id === value)?.noAccess
+  }
+
+  /** The request fields for a picker value. An app link always grants app-user standing; the team is the choice. */
+  function grantBody(value: string): Partial<InviteLinkReqType> {
+    return isAppScope.value
+      ? { role: ProjectRoles.APP_USER, fk_app_team_id: value }
+      : { role: value as InviteLinkReqType['role'] }
+  }
+
   /** Weakest first, so a higher index is more power. */
   const orderedRoles = computed(() => [...(isWorkspaceScope.value ? OrderedWorkspaceRoles : OrderedProjectRoles)].reverse())
 
   /** The highest-ranked role the user actually holds in this scope; -1 when none is known. */
   const power = computed(() => {
-    const held = isWorkspaceScope.value ? workspaceRoles.value : baseRoles.value
+    const callerRole = target.value?.callerRole
+
+    const held = isInterfaceScope.value
+      ? callerRole
+        ? { [callerRole]: true }
+        : null
+      : isWorkspaceScope.value
+      ? workspaceRoles.value
+      : baseRoles.value
 
     return Math.max(-1, ...Object.keys(held || {}).map((r) => (held?.[r] ? orderedRoles.value.indexOf(r as never) : -1)))
   })
@@ -63,6 +182,9 @@ export const useInviteLinks = createGlobalState(() => {
    * it would only be a button that fails.
    */
   const allowedRoles = computed(() => {
+    // Team ids stand in for roles here; the pickers take labels for them.
+    if (isAppScope.value) return teams.value.map((t) => t.id) as (keyof typeof RoleLabels)[]
+
     const offered = [...inviteLinkRolesFor(scope.value)]
 
     if (power.value < 0) return offered
@@ -76,10 +198,13 @@ export const useInviteLinks = createGlobalState(() => {
    * first, then the link roles above the caller's own, strongest first.
    */
   const disabledRoles = computed(() => {
+    if (isAppScope.value) return [] as (keyof typeof RoleLabels)[]
+
     const owner = isWorkspaceScope.value ? WorkspaceUserRoles.OWNER : ProjectRoles.OWNER
     const above = inviteLinkRolesFor(scope.value).filter((r) => !allowedRoles.value.includes(r))
 
-    return [owner, ...above] as (keyof typeof RoleLabels)[]
+    // An interface has no owner to withhold.
+    return (isInterfaceScope.value ? above : [owner, ...above]) as (keyof typeof RoleLabels)[]
   })
 
   const disabledRolesTooltip = computed(() => {
@@ -100,6 +225,9 @@ export const useInviteLinks = createGlobalState(() => {
    * button the hub shows them. Fall back to the strongest role they may mint.
    */
   const defaultRole = computed(() => {
+    // App teams come ordered with the everyday team first.
+    if (isAppScope.value) return teams.value[0]?.id ?? ''
+
     const preferred = target.value?.scope === InviteLinkScope.WORKSPACE ? WorkspaceUserRoles.EDITOR : ProjectRoles.EDITOR
 
     const allowed = allowedRoles.value
@@ -144,10 +272,55 @@ export const useInviteLinks = createGlobalState(() => {
     }
   }
 
+  /** Interface links ride the internal API, so an interface member with no base role can reach them. */
+  async function interfaceGet(t: InviteLinkTarget) {
+    return {
+      data: await internalGet(t.workspaceId!, t.baseId!, {
+        operation: 'interfaceInviteLinkList',
+        interfaceId: t.interfaceId,
+      }),
+    }
+  }
+
+  async function interfacePost(
+    t: InviteLinkTarget,
+    operation: 'interfaceInviteLinkCreate' | 'interfaceInviteLinkUpdate' | 'interfaceInviteLinkDelete',
+    payload: Record<string, any>,
+  ) {
+    return {
+      data: await $api.internal.postOperation(
+        t.workspaceId!,
+        t.baseId!,
+        { operation },
+        { interfaceId: t.interfaceId, ...payload },
+      ),
+    }
+  }
+
+  /** App links ride the internal API too, alongside the app's other access ops. */
+  async function appGet(t: InviteLinkTarget) {
+    return {
+      data: await internalGet(t.workspaceId!, t.baseId!, {
+        operation: 'appInviteLinkList',
+        appId: t.appId,
+      }),
+    }
+  }
+
+  async function appPost(
+    t: InviteLinkTarget,
+    operation: 'appInviteLinkCreate' | 'appInviteLinkUpdate' | 'appInviteLinkDelete',
+    payload: Record<string, any>,
+  ) {
+    return {
+      data: await $api.internal.postOperation(t.workspaceId!, t.baseId!, { operation }, { appId: t.appId, ...payload }),
+    }
+  }
+
   async function load(next: InviteLinkTarget, force = false) {
     if (!force && isLoaded.value && sameTarget(target.value, next)) return
 
-    if (next.scope === InviteLinkScope.WORKSPACE ? !next.workspaceId : !next.baseId) return
+    if (!isTargetComplete(next)) return
 
     // Switching target must not leave the previous target's links on screen.
     if (!sameTarget(target.value, next)) {
@@ -158,7 +331,13 @@ export const useInviteLinks = createGlobalState(() => {
     target.value = next
     isLoading.value = true
 
-    const res = await request(() => $api.instance.get(basePath(next)))
+    const res = await request(() =>
+      next.scope === InviteLinkScope.INTERFACE
+        ? interfaceGet(next)
+        : next.scope === InviteLinkScope.APP
+        ? appGet(next)
+        : $api.instance.get(basePath(next)),
+    )
 
     links.value = res?.data?.list ?? []
     isLoaded.value = true
@@ -168,13 +347,21 @@ export const useInviteLinks = createGlobalState(() => {
   async function createLink(body?: Partial<InviteLinkReqType>, opts?: { toast?: boolean }) {
     if (!target.value) return null
 
+    const t = target.value
+
+    const link = {
+      ...grantBody(defaultRole.value),
+      email_domain: defaultEmailDomain.value,
+      ...body,
+    } as InviteLinkReqType
+
     const res = await request(
       () =>
-        $api.instance.post(basePath(target.value!), {
-          role: defaultRole.value,
-          email_domain: defaultEmailDomain.value,
-          ...body,
-        } as InviteLinkReqType),
+        t.scope === InviteLinkScope.INTERFACE
+          ? interfacePost(t, 'interfaceInviteLinkCreate', { link })
+          : t.scope === InviteLinkScope.APP
+          ? appPost(t, 'appInviteLinkCreate', { link })
+          : $api.instance.post(basePath(t), link),
       opts,
     )
 
@@ -188,7 +375,17 @@ export const useInviteLinks = createGlobalState(() => {
   async function saveLink(id: string, patch: Partial<InviteLinkReqType>, opts?: { toast?: boolean }) {
     if (!target.value || !id) return null
 
-    const res = await request(() => $api.instance.patch(`${basePath(target.value!)}/${id}`, patch), opts)
+    const t = target.value
+
+    const res = await request(
+      () =>
+        t.scope === InviteLinkScope.INTERFACE
+          ? interfacePost(t, 'interfaceInviteLinkUpdate', { linkId: id, link: patch })
+          : t.scope === InviteLinkScope.APP
+          ? appPost(t, 'appInviteLinkUpdate', { linkId: id, link: patch })
+          : $api.instance.patch(`${basePath(t)}/${id}`, patch),
+      opts,
+    )
 
     if (!res?.data) return null
 
@@ -202,7 +399,15 @@ export const useInviteLinks = createGlobalState(() => {
   async function deleteLink(id: string) {
     if (!target.value || !id) return false
 
-    const res = await request(() => $api.instance.delete(`${basePath(target.value!)}/${id}`))
+    const t = target.value
+
+    const res = await request(() =>
+      t.scope === InviteLinkScope.INTERFACE
+        ? interfacePost(t, 'interfaceInviteLinkDelete', { linkId: id })
+        : t.scope === InviteLinkScope.APP
+        ? appPost(t, 'appInviteLinkDelete', { linkId: id })
+        : $api.instance.delete(`${basePath(t)}/${id}`),
+    )
 
     if (!res) return false
 
@@ -235,6 +440,12 @@ export const useInviteLinks = createGlobalState(() => {
     allowedRoles,
     disabledRoles,
     disabledRolesTooltip,
+    roleLabels,
+    roleDescriptions,
+    roleIcons,
+    linkGrant,
+    grantOpensNothing,
+    grantBody,
     defaultRole,
     defaultEmailDomain,
     linkUrl,

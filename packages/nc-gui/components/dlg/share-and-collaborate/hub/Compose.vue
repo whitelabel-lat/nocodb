@@ -1,9 +1,20 @@
 <script lang="ts" setup>
+import type { IconMapKey } from '#imports'
+
 /** The invite screen: one field, one role, one button. */
 const props = defineProps<{
   active: boolean
   baseId?: string
-  users?: Array<{ email?: string }>
+  users?: Array<{ email?: string; roles?: string[] }>
+  /** Interface and app invites: their role (or team) list and their own send. */
+  type?: 'base' | 'interface' | 'app'
+  roles?: string[]
+  roleLabels?: Partial<Record<string, string>>
+  roleDescriptions?: Partial<Record<string, string>>
+  roleIcons?: Partial<Record<string, IconMapKey>>
+  rolePhrase?: (role: string, count: number) => string | undefined
+  noAccessRoles?: string[]
+  inviteHandler?: (emails: string[], role: string) => Promise<void>
 }>()
 
 const emit = defineEmits(['back', 'sent'])
@@ -57,9 +68,16 @@ const sendLabel = computed(() => {
     <DlgInviteForm
       ref="formRef"
       :active="props.active"
-      type="base"
+      :type="props.type ?? 'base'"
       :base-id="props.baseId"
       :users="props.users"
+      :roles="props.roles"
+      :role-labels="props.roleLabels"
+      :role-descriptions="props.roleDescriptions"
+      :role-icons="props.roleIcons"
+      :role-phrase="props.rolePhrase"
+      :no-access-roles="props.noAccessRoles"
+      :invite-handler="props.inviteHandler"
       layout="compose"
       :show-footer="false"
       @success="emit('sent', $event)"

@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  ignore: [...(process.env.NODE_ENV === 'production' ? ['pages/playground/**/*'] : [])],
+  ignore: [...(process.env.NODE_ENV === 'production' ? ['pages/playground.vue', 'pages/playground/**/*'] : [])],
 
   modules: ['@vueuse/nuxt', '@unocss/nuxt', '@nuxt/image', '@pinia/nuxt', '@productdevbook/chatwoot'],
   ssr: false,
@@ -57,6 +57,7 @@ export default defineNuxtConfig({
     /** In production build we need to load assets using absolute path for history-mode routing */
     cdnURL: process.env.NODE_ENV === 'production' ? process.env.NC_CDN_URL || '/' : undefined,
     head: {
+      htmlAttrs: { lang: 'en' },
       link: [
         {
           rel: 'icon',
@@ -148,6 +149,10 @@ export default defineNuxtConfig({
       ncBackendUrl: '',
       env: 'production',
       maxPageDesignerTableRows: 100,
+      // dev picker listener (scripts/dev-comments.mjs): nc-dev sets one per instance; 0 = the page's port + 100
+      devCommentsPort: 0,
+      // NC_CLAUDE_COMMENTS=false turns Claude comments off: no dock, no picks, no listener
+      claudeComments: process.env.NC_CLAUDE_COMMENTS !== 'false',
     },
   },
 
@@ -176,60 +181,67 @@ export default defineNuxtConfig({
       },
     },
     plugins: [
-      VueI18nPlugin({
-        include: [resolve(dirname('./lang/*.json'))],
-        runtimeOnly: false,
-      }),
-      Icons({
-        autoInstall: false,
-        compiler: 'vue3',
-        defaultClass: 'nc-icon',
-        customCollections: {
-          'nc-icons': FileSystemIconLoader('./assets/nc-icons', (svg) =>
-            svg.replace(/^<svg (?!=\s*data-ignore)/, '<svg stroke="currentColor" '),
-          ),
-          'nc-icons-v2': FileSystemIconLoader('./assets/nc-icons-v2', (svg) =>
-            svg.replace(/^<svg (?!=\s*data-ignore)/, '<svg stroke="currentColor" '),
-          ),
-        },
-      }),
-      Components({
-        resolvers: [
-          AntDesignVueResolver({
-            importStyle: false,
-            resolveIcons: false,
-          }),
-          IconsResolver({
-            prefix: false,
-            enabledCollections: [
-              'ant-design',
-              'bi',
-              'cil',
-              'clarity',
-              'eva',
-              'ic',
-              'logos',
-              'lucide',
-              'material-symbols',
-              'mdi',
-              'mi',
-              'ph',
-              'ri',
-              'system-uicons',
-              'vscode-icons',
-              'simple-icons',
-              'nc-icons',
-              'ion',
-              'tabler',
-              'carbon',
-            ],
-          }),
-        ],
-      }),
-      PurgeIcons({
-        /* PurgeIcons Options */
-        includedCollections: ['emojione'],
-      }),
+      // ee/nuxt.config.ts re-declares these four, and Nuxt's `extends` concatenates
+      // arrays — registering them here too made every SFC run through
+      // unplugin-vue-components twice. EE owns its copies.
+      ...(process.env.EE === 'true'
+        ? []
+        : [
+            VueI18nPlugin({
+              include: [resolve(dirname('./lang/*.json'))],
+              runtimeOnly: false,
+            }),
+            Icons({
+              autoInstall: false,
+              compiler: 'vue3',
+              defaultClass: 'nc-icon',
+              customCollections: {
+                'nc-icons': FileSystemIconLoader('./assets/nc-icons', (svg) =>
+                  svg.replace(/^<svg (?!=\s*data-ignore)/, '<svg stroke="currentColor" '),
+                ),
+                'nc-icons-v2': FileSystemIconLoader('./assets/nc-icons-v2', (svg) =>
+                  svg.replace(/^<svg (?!=\s*data-ignore)/, '<svg stroke="currentColor" '),
+                ),
+              },
+            }),
+            Components({
+              resolvers: [
+                AntDesignVueResolver({
+                  importStyle: false,
+                  resolveIcons: false,
+                }),
+                IconsResolver({
+                  prefix: false,
+                  enabledCollections: [
+                    'ant-design',
+                    'bi',
+                    'cil',
+                    'clarity',
+                    'eva',
+                    'ic',
+                    'logos',
+                    'lucide',
+                    'material-symbols',
+                    'mdi',
+                    'mi',
+                    'ph',
+                    'ri',
+                    'system-uicons',
+                    'vscode-icons',
+                    'simple-icons',
+                    'nc-icons',
+                    'ion',
+                    'tabler',
+                    'carbon',
+                  ],
+                }),
+              ],
+            }),
+            PurgeIcons({
+              /* PurgeIcons Options */
+              includedCollections: ['emojione'],
+            }),
+          ]),
     ],
     define: {
       'process.env.DEBUG': 'false',
@@ -242,8 +254,13 @@ export default defineNuxtConfig({
     },
     server: {
       watch: {
-        usePolling: true,
+        // Polling is the portable option (Docker / network FS); NC_DEV_FAST=true
+        // swaps in native fs events, which is much cheaper on a local checkout.
+        usePolling: process.env.NC_DEV_FAST !== 'true',
       },
+      // Vite turns this on under coding agents with warn included; a Vue warn
+      // serializes its vnode trace (MBs per line), stalling the page and the log.
+      forwardConsole: { unhandledErrors: true, logLevels: ['error'] },
     },
     resolve: {
       alias: {
@@ -368,6 +385,7 @@ export default defineNuxtConfig({
         'uuid',
         '@tiptap/extension-collaboration',
         '@tiptap/extension-collaboration-cursor',
+        'y-monaco',
         'yjs',
         'lib0/encoding',
         'lib0/decoding',
@@ -403,6 +421,7 @@ export default defineNuxtConfig({
         'grapheme-splitter',
         'html-entities',
         'inflection',
+        'pdfjs-dist/legacy/build/pdf.mjs',
         'pdfobject-vue',
         'pinia',
         'rfdc',

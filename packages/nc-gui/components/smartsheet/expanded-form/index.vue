@@ -54,7 +54,7 @@ const key = ref(0)
 
 const wrapper = ref()
 
-const { appInfo, isMobileMode } = useGlobal()
+const { appInfo, isMobileMode, user } = useGlobal()
 
 const { t } = useI18n()
 
@@ -86,7 +86,7 @@ const reloadTrigger = inject(ReloadRowDataHookInj, createEventHook())
 
 const reloadViewDataTrigger = inject(ReloadViewDataHookInj, createEventHook())
 
-const { addOrEditStackRow } = useKanbanViewStoreOrThrow()
+const kanbanViewStore = useKanbanViewStore()
 
 const { isExpandedFormCommentMode } = storeToRefs(useConfigStore())
 
@@ -387,7 +387,7 @@ const save = async () => {
     let kanbanClbk
     if (activeView.value?.type === ViewTypes.KANBAN) {
       kanbanClbk = (row: any, isNewRow: boolean) => {
-        addOrEditStackRow(row, isNewRow)
+        kanbanViewStore?.addOrEditStackRow(row, isNewRow)
       }
     }
 
@@ -698,6 +698,21 @@ watch(rowId, async (nRow) => {
   mobileDiscussionMode.value = false
   await triggerRowLoad(nRow)
 })
+
+// Show field defaults in a new record before it is saved; values the caller preset are kept.
+// Templates and blueprints store only what the user picks, so they are skipped.
+watch(
+  _row,
+  (row) => {
+    if (!row?.rowMeta?.new || !row.row || props.templateMode || props.blueprintMode) return
+
+    const defaults = rowDefaultData(activeMeta.value?.columns, user.value ?? undefined)
+    for (const [title, value] of Object.entries(defaults)) {
+      if (!(title in row.row)) row.row[title] = value
+    }
+  },
+  { immediate: true },
+)
 
 const preventModalStatus = computed({
   get: () => isCloseModalOpen.value || isPreventChangeModalOpen.value,

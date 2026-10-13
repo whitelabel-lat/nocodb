@@ -2,6 +2,8 @@
 import {
   type ColumnType,
   type FilterType,
+  type LinkToAnotherRecordType,
+  type TableType,
   ViewSettingOverrideOptions,
   getRlsPlaceholdersForColumn,
   hasRlsPlaceholder,
@@ -59,6 +61,8 @@ interface Props {
   hideCheckbox?: boolean
   /** Host supplies the padding: drops this component's min-width floor, outer padding and trailing space. */
   flush?: boolean
+  /** Drop the "Where" prefix while there is a single condition, for narrow hosts. */
+  hideSoleWhere?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -90,6 +94,7 @@ const props = withDefaults(defineProps<Props>(), {
   isTempFilters: false,
   hideCheckbox: false,
   flush: false,
+  hideSoleWhere: false,
 })
 
 const emit = defineEmits([
@@ -201,7 +206,7 @@ const levelId = computed(() =>
     : undefined,
 )
 
-const { getMetaByKey } = useMetas()
+const { getMeta, getMetaByKey } = useMetas()
 
 const currentFilters = modelValue.value || (!link.value && !webHook.value && !workflow.value && nestedFilters.value) || []
 
@@ -752,6 +757,7 @@ onMounted(async () => {
         })
     })(),
     loadBtLookupTypes(),
+    loadRootLinkTargets(),
   ])
   isMounted.value = true
 })
@@ -1083,6 +1089,9 @@ const sqlUi = computed(() => {
     : Object.values(sqlUis.value)[0]
 })
 
+// rootMeta column id -> table its Link / Lookup-of-Link column points at
+const rootLinkTargets = ref<Record<string, string>>({})
+
 // `allowComputed`: in slot mode (workflow `{{ }}` variable input) the value is a
 // literal supplied by the parent, not a column reference — so the field-to-field
 // constraints (physical/virtual column, abstract-type compatibility) don't apply.
@@ -1091,6 +1100,14 @@ const sqlUi = computed(() => {
 const isDynamicFilterAllowed = (filter: FilterType, { allowComputed = false } = {}) => {
   const col = getColumn(filter)
   if (!col) return false
+
+  // Link / Lookup of a Link: compared by linked record, against a root column pointing at the same table
+  const linkTargetId = link.value ? getLinkedRecordTargetId(col) : undefined
+  if (linkTargetId) {
+    if (!Object.values(rootLinkTargets.value).includes(linkTargetId)) return false
+    return !filter.comparison_op || ['eq', 'neq'].includes(filter.comparison_op)
+  }
+
   // Field-to-field only: a virtual column has no physical value to compare.
   if (!allowComputed && isVirtualCol(col)) return false
 
@@ -1122,10 +1139,48 @@ const isDynamicFilterAllowed = (filter: FilterType, { allowComputed = false } = 
   return !filter.comparison_op || ['eq', 'lt', 'gt', 'lte', 'gte', 'like', 'nlike', 'neq'].includes(filter.comparison_op)
 }
 
+async function loadRootLinkTargets() {
+  if (!link.value || !props.rootMeta?.columns) return
+  try {
+    const targets: Record<string, string> = {}
+    for (const c of await composeColumnsForFilter({ rootMeta: props.rootMeta, getMeta })) {
+      const targetId = getLinkedRecordTargetId(c.btLookupColumn ?? c)
+      if (targetId) targets[c.id!] = targetId
+    }
+    rootLinkTargets.value = targets
+  } catch (e) {
+    message.error(await extractSdkResponseErrorMsg(e))
+  }
+}
+
+const { baseTables } = storeToRefs(useTablesStore())
+
+// Why Dynamic is unavailable for a Link / Lookup-of-Link filter: no root field points at the same table
+const linkDynamicHint = (filter: FilterType) => {
+  const col = getColumn(filter)
+  const targetId = link.value ? getLinkedRecordTargetId(col) : undefined
+  if (!targetId || Object.values(rootLinkTargets.value).includes(targetId)) return
+
+  // The link can point into another base
+  const targetBaseId = (col?.colOptions as LinkToAnotherRecordType)?.fk_related_base_id || props.rootMeta?.base_id
+  const target =
+    baseTables.value.get(targetBaseId)?.find((tbl: TableType) => tbl.id === targetId)?.title ??
+    getMetaByKey(targetBaseId, targetId)?.title
+
+  if (!target) return t('msg.info.linkDynamicFilterNoMatchingFieldGeneric', { table: props.rootMeta?.title })
+
+  return t('msg.info.linkDynamicFilterNoMatchingField', { table: props.rootMeta?.title, target })
+}
+
 const dynamicColumns = (filter: FilterType) => {
   const filterCol = getColumn(filter)
 
   if (!filterCol) return []
+
+  const linkTargetId = link.value ? getLinkedRecordTargetId(filterCol) : undefined
+  if (linkTargetId) {
+    return props.rootMeta?.columns?.filter((c: ColumnType) => rootLinkTargets.value[c.id!] === linkTargetId)
+  }
 
   return props.rootMeta?.columns?.filter((c: ColumnType) => {
     if (excludedFilterColUidt.includes(c.uidt as UITypes) || isVirtualCol(c) || (isSystemColumn(c) && !c.pk)) {
@@ -1484,19 +1539,27 @@ defineExpose({
               class="flex flex-col gap-y-2 sm:gap-y-0 sm:flex-row gap-x-0 flex-1"
               :class="[
                 `nc-filter-wrapper-${filter.fk_column_id}`,
-                { 'nc-filter-disabled-row': isEeUI && filter.enabled === false, 'nc-filter-wrapper': !isMobileMode },
+                {
+                  'nc-filter-disabled-row': isEeUI && filter.enabled === false,
+                  'nc-filter-wrapper': !isMobileMode,
+                  'min-w-0': hideSoleWhere,
+                },
               ]"
             >
-              <NcWrap :wrap="!!isMobileMode" class="grid grid-cols-12 gap-x-0 flex-1 nc-filter-wrapper">
+              <NcWrap
+                :wrap="!!isMobileMode"
+                class="grid grid-cols-12 gap-x-0 flex-1 nc-filter-wrapper"
+                :class="{ 'min-w-0': hideSoleWhere }"
+              >
                 <div
-                  v-if="!visibleFilters.indexOf(filter)"
+                  v-if="!visibleFilters.indexOf(filter) && !(hideSoleWhere && visibleFilters.length === 1)"
                   class="xs:col-span-3 flex items-center sm:(!min-w-18 !max-w-18) pl-3 nc-filter-where-label"
                 >
                   {{ $t('labels.where') }}
                 </div>
 
                 <NcSelect
-                  v-else
+                  v-else-if="visibleFilters.indexOf(filter) > 0"
                   v-model:value="filter.logical_op"
                   v-e="['c:filter:logical-op:select', { link: !!link, webHook: !!webHook }]"
                   :dropdown-match-select-width="false"
@@ -1572,10 +1635,12 @@ defineExpose({
                   v-model:value="filter.comparison_op"
                   v-e="['c:filter:comparison-op:select', { link: !!link, webHook: !!webHook }]"
                   :dropdown-match-select-width="false"
-                  class="xs:(col-span-3 !min-w-0) caption nc-filter-operation-select !min-w-26.75 max-h-8"
+                  class="xs:(col-span-3 !min-w-0) caption nc-filter-operation-select max-h-8"
                   :placeholder="$t('labels.operation')"
                   :class="{
                     '!max-w-26.75': !webHook,
+                    '!min-w-26.75': !hideSoleWhere,
+                    '!min-w-20': hideSoleWhere,
                   }"
                   density="compact"
                   variant="solo"
@@ -1668,12 +1733,13 @@ defineExpose({
                       !(['blank', 'notblank'].includes(filter.comparison_op) || isDateType(types[filter.fk_column_id])),
                   }"
                 >
-                  <div v-if="link && (filter.dynamic || filter.fk_value_col_id)" class="flex-grow">
+                  <div v-if="link && (filter.dynamic || filter.fk_value_col_id)" class="flex-grow min-w-0">
                     <SmartsheetToolbarFieldListAutoCompleteDropdown
                       v-if="showFilterInput(filter)"
                       v-model="filter.fk_value_col_id"
                       :disable-smartsheet="!!widget"
-                      class="nc-filter-field-select min-w-32 w-full max-h-8"
+                      class="nc-filter-field-select w-full max-h-8"
+                      :class="hideSoleWhere ? 'min-w-24' : 'min-w-32'"
                       :columns="dynamicColumns(filter)"
                       :meta="rootMeta"
                       @change="saveOrUpdate(filter, getFilterIndex(filter))"
@@ -1701,6 +1767,7 @@ defineExpose({
                       class="nc-filter-value-select rounded-md min-w-34"
                       :class="{
                         '!w-full': webHook,
+                        '!min-w-24': hideSoleWhere,
                       }"
                       :column="{ ...getColumn(filter), uidt: types[filter.fk_column_id] }"
                       :filter="filter"
@@ -1804,30 +1871,33 @@ defineExpose({
                                 {{ $t('labels.filterBasedOnStaticValue') }}
                               </div>
                             </div>
-                            <div
-                              v-e="['c:filter:dynamic-filter']"
-                              class="px-4 py-3 flex flex-col select-none gap-y-2 cursor-pointer rounded-md hover:bg-nc-bg-gray-light text-nc-content-gray-subtle2 nc-new-record-with-form group"
-                              :class="
-                                isDynamicFilterAllowed(filter) && showFilterInput(filter)
-                                  ? 'cursor-pointer'
-                                  : 'cursor-not-allowed'
-                              "
-                              @click="changeToDynamic(filter, getFilterIndex(filter))"
-                            >
-                              <div class="flex flex-row items-center justify-between w-full">
-                                <div class="flex flex-row items-center justify-start gap-x-2.5">
-                                  {{ $t('labels.dynamicCondition') }}
+                            <NcTooltip :disabled="!linkDynamicHint(filter)" placement="right">
+                              <template #title>{{ linkDynamicHint(filter) }}</template>
+                              <div
+                                v-e="['c:filter:dynamic-filter']"
+                                class="px-4 py-3 flex flex-col select-none gap-y-2 cursor-pointer rounded-md hover:bg-nc-bg-gray-light text-nc-content-gray-subtle2 nc-new-record-with-form group"
+                                :class="
+                                  isDynamicFilterAllowed(filter) && showFilterInput(filter)
+                                    ? 'cursor-pointer'
+                                    : 'cursor-not-allowed'
+                                "
+                                @click="changeToDynamic(filter, getFilterIndex(filter))"
+                              >
+                                <div class="flex flex-row items-center justify-between w-full">
+                                  <div class="flex flex-row items-center justify-start gap-x-2.5">
+                                    {{ $t('labels.dynamicCondition') }}
+                                  </div>
+                                  <GeneralIcon
+                                    v-if="filter.dynamic || filter.fk_value_col_id"
+                                    icon="check"
+                                    class="w-4 h-4 text-primary"
+                                  />
                                 </div>
-                                <GeneralIcon
-                                  v-if="filter.dynamic || filter.fk_value_col_id"
-                                  icon="check"
-                                  class="w-4 h-4 text-primary"
-                                />
+                                <div class="flex flex-row text-xs text-nc-content-gray-disabled">
+                                  {{ $t('labels.filterBasedOnDynamicValue') }}
+                                </div>
                               </div>
-                              <div class="flex flex-row text-xs text-nc-content-gray-disabled">
-                                {{ $t('labels.filterBasedOnDynamicValue') }}
-                              </div>
-                            </div>
+                            </NcTooltip>
                           </div>
                         </div>
                       </template>

@@ -6,7 +6,12 @@ import { InviteLinkScope } from 'nocodb-sdk'
  * detail of copying one, so it is minted on the first copy and never just
  * because a modal opened.
  */
-const emit = defineEmits(['manage'])
+const props = defineProps<{
+  /** Plan-gated: pressing the button asks for an upgrade instead. */
+  blocked?: boolean
+}>()
+
+const emit = defineEmits(['manage', 'blocked'])
 
 const { t } = useI18n()
 
@@ -19,6 +24,12 @@ const {
   allowedRoles,
   disabledRoles,
   disabledRolesTooltip,
+  roleLabels,
+  roleDescriptions,
+  roleIcons,
+  linkGrant,
+  grantOpensNothing,
+  grantBody,
   defaultRole,
   defaultEmailDomain,
   createLink,
@@ -27,11 +38,17 @@ const {
 
 const isWorkspaceInvite = computed(() => inviteTarget.value?.scope === InviteLinkScope.WORKSPACE)
 
+const isInterfaceInvite = computed(() => inviteTarget.value?.scope === InviteLinkScope.INTERFACE)
+
+/** An app link adds people to a team, so its sentence names the team rather than a role. */
+const isAppInvite = computed(() => inviteTarget.value?.scope === InviteLinkScope.APP)
+
 const { copy } = useCopy()
 
 const { $e } = useNuxtApp()
 
-const primary = computed(() => links.value[0])
+// A spent or dormant link would only hand out a refusal; copy a working one, or mint one.
+const primary = computed(() => links.value.find((l) => l.usable !== false))
 
 const isBusy = ref(false)
 
@@ -42,7 +59,7 @@ let copiedTimer: ReturnType<typeof setTimeout> | undefined
 /** Until a link exists these mirror what one would be created with. */
 const pendingRole = ref<string | null>(null)
 
-const role = computed(() => primary.value?.role ?? pendingRole.value ?? defaultRole.value)
+const role = computed(() => linkGrant(primary.value) ?? pendingRole.value ?? defaultRole.value)
 
 const domain = computed(() => (primary.value ? primary.value.email_domain : defaultEmailDomain.value))
 
@@ -52,17 +69,29 @@ const hasLink = computed(() => !!primary.value)
 const ctaLabel = computed(() => (hasLink.value ? t('activity.copyInviteLink') : t('activity.createInviteLink')))
 
 async function onRoleChange(next: string) {
-  $e(isWorkspaceInvite.value ? 'c:ws:invite:link:role:change' : 'c:base:invite:link:role:change', {
-    role: next,
-    existing: !!primary.value,
-  })
+  if (props.blocked) return emit('blocked')
+
+  $e(
+    isWorkspaceInvite.value
+      ? 'c:ws:invite:link:role:change'
+      : isInterfaceInvite.value
+      ? 'c:interface:invite:link:role:change'
+      : isAppInvite.value
+      ? 'c:app:invite:link:team:change'
+      : 'c:base:invite:link:role:change',
+    {
+      scope: inviteTarget.value?.scope,
+      role: next,
+      existing: !!primary.value,
+    },
+  )
 
   if (!primary.value) {
     pendingRole.value = next
     return
   }
 
-  await saveLink(primary.value.id, { role: next })
+  await saveLink(primary.value.id, grantBody(next))
 }
 
 /**
@@ -71,6 +100,8 @@ async function onRoleChange(next: string) {
  * await where a link already exists.
  */
 async function onCopy() {
+  if (props.blocked) return emit('blocked')
+
   if (isBusy.value) return
 
   isBusy.value = true
@@ -80,13 +111,23 @@ async function onCopy() {
     const isFirst = !link
 
     if (!link) {
-      link = await createLink(pendingRole.value ? { role: pendingRole.value } : undefined)
+      link = await createLink(pendingRole.value ? grantBody(pendingRole.value) : undefined)
 
       if (link) {
-        $e(isWorkspaceInvite.value ? 'a:ws:invite:link:create' : 'a:base:invite:link:create', {
-          role: link.role,
-          restricted: !!link.email_domain,
-        })
+        $e(
+          isWorkspaceInvite.value
+            ? 'a:ws:invite:link:create'
+            : isInterfaceInvite.value
+            ? 'a:interface:invite:link:create'
+            : isAppInvite.value
+            ? 'a:app:invite:link:create'
+            : 'a:base:invite:link:create',
+          {
+            scope: inviteTarget.value?.scope,
+            role: link.role,
+            restricted: !!link.email_domain,
+          },
+        )
       }
     }
 
@@ -96,10 +137,20 @@ async function onCopy() {
     // do nothing at all and look like a dead button.
     await copy(linkUrl(link))
 
-    $e(isWorkspaceInvite.value ? 'c:ws:invite:link:copy' : 'c:base:invite:link:copy', {
-      created: isFirst,
-      restricted: !!link.email_domain,
-    })
+    $e(
+      isWorkspaceInvite.value
+        ? 'c:ws:invite:link:copy'
+        : isInterfaceInvite.value
+        ? 'c:interface:invite:link:copy'
+        : isAppInvite.value
+        ? 'c:app:invite:link:copy'
+        : 'c:base:invite:link:copy',
+      {
+        scope: inviteTarget.value?.scope,
+        created: isFirst,
+        restricted: !!link.email_domain,
+      },
+    )
 
     isCopied.value = true
     clearTimeout(copiedTimer)
@@ -140,7 +191,19 @@ onBeforeUnmount(() => clearTimeout(copiedTimer))
            copy that explains it and translators can move it. Short enough to
            keep the role chip on the same line as the words it belongs to --
            the caution below carries what the sentence used to say. -->
-      <i18n-t v-else :keypath="domain ? 'msg.info.inviteLinkDomainSentence' : 'msg.info.inviteLinkOpenSentence'" tag="span">
+      <i18n-t
+        v-else
+        :keypath="
+          isAppInvite
+            ? domain
+              ? 'msg.info.inviteLinkDomainSentenceTeam'
+              : 'msg.info.inviteLinkOpenSentenceTeam'
+            : domain
+            ? 'msg.info.inviteLinkDomainSentence'
+            : 'msg.info.inviteLinkOpenSentence'
+        "
+        tag="span"
+      >
         <template #domain>
           <span class="nc-hub-domain-chip">{{ `@${domain}` }}</span>
         </template>
@@ -151,12 +214,23 @@ onBeforeUnmount(() => clearTimeout(copiedTimer))
             :roles="allowedRoles"
             :disabled-roles="disabledRoles"
             :disabled-roles-tooltip="disabledRolesTooltip"
+            :labels="roleLabels"
+            :descriptions="roleDescriptions"
+            :icons="roleIcons"
             trigger-variant="compact"
             size="sm"
             placement="bottomLeft"
           />
         </template>
       </i18n-t>
+    </div>
+
+    <div
+      v-if="isLoaded && grantOpensNothing(role)"
+      class="text-bodySm text-nc-content-orange-dark"
+      data-testid="nc-hub-team-no-access"
+    >
+      {{ $t('msg.info.appTeamOpensNothing', { team: roleLabels?.[role] }) }}
     </div>
 
     <!-- Only an unrestricted link needs the warning: a domain-restricted one

@@ -63,6 +63,7 @@ enum AuditV1OperationTypes {
   BASE_INVITE_LINK_CREATE = 'BASE_INVITE_LINK_CREATE',
   BASE_INVITE_LINK_UPDATE = 'BASE_INVITE_LINK_UPDATE',
   BASE_INVITE_LINK_REVOKE = 'BASE_INVITE_LINK_REVOKE',
+  APP_INVITE_LINK_ACCEPT = 'APP_INVITE_LINK_ACCEPT',
   BASE_TEAM_UPDATE = 'BASE_TEAM_UPDATE',
   BASE_TEAM_DELETE = 'BASE_TEAM_DELETE',
 
@@ -185,6 +186,12 @@ enum AuditV1OperationTypes {
   INTEGRATION_CREATE = 'INTEGRATION_CREATE',
   INTEGRATION_UPDATE = 'INTEGRATION_UPDATE',
   INTEGRATION_DELETE = 'INTEGRATION_DELETE',
+
+  VAULT_CREATE = 'VAULT_CREATE',
+  VAULT_UPDATE = 'VAULT_UPDATE',
+  VAULT_DELETE = 'VAULT_DELETE',
+  VAULT_PERMISSION_UPDATE = 'VAULT_PERMISSION_UPDATE',
+  VAULT_SCOPE_UPDATE = 'VAULT_SCOPE_UPDATE',
 
   SNAPSHOT_DELETE = 'SNAPSHOT_DELETE',
   SNAPSHOT_CREATE = 'SNAPSHOT_CREATE',
@@ -477,6 +484,13 @@ export const auditV1OperationsCategory: Record<
       key.startsWith('INTEGRATION_')
     ),
   },
+  VAULT: {
+    label: 'title.vaults',
+    value: 'VAULT',
+    types: Object.values(AuditV1OperationTypes).filter((key) =>
+      key.startsWith('VAULT_')
+    ),
+  },
   API: {
     label: 'title.apiTokens',
     value: 'API',
@@ -624,6 +638,15 @@ export interface InviteLinkPayload {
   max_uses?: number | null;
   base_title?: string;
   workspace_title?: string;
+  interface_title?: string;
+  app_title?: string;
+  /** App links: the team the link adds people to. */
+  team_title?: string;
+}
+
+export interface AppInviteLinkAcceptPayload extends InviteLinkPayload {
+  user_email: string;
+  user_id: string;
 }
 
 export interface InviteLinkUpdatePayload
@@ -1287,6 +1310,32 @@ export interface IntegrationDeletePayload {
   integration_type: string;
 }
 
+// Vault (secrets provider). Never carries the provider credentials.
+export interface VaultPayload {
+  vault_id: string;
+  vault_title: string;
+  vault_provider: string;
+  /** Owned by one workspace, or by the organization. */
+  vault_scope: 'workspace' | 'org';
+}
+
+export interface VaultUpdatePayload extends VaultPayload {
+  /** False for a change that left the stored credentials alone. */
+  config_changed: boolean;
+}
+
+export interface VaultPermissionUpdatePayload extends VaultPayload {
+  granted_type: string;
+  granted_role?: string;
+  subject_count: number;
+}
+
+export interface VaultScopeUpdatePayload extends VaultPayload {
+  previous_scope: 'workspace' | 'org';
+  /** The workspace the vault now belongs to, when limited to one. */
+  fk_workspace_id?: string;
+}
+
 export interface SnapshotPayload {
   snapshot_title: string;
   snapshot_id: string;
@@ -1578,11 +1627,13 @@ export interface InterfaceGrantContext {
 
 export interface InterfaceUserInvitePayload extends InterfaceGrantContext {
   role: string;
+  via?: 'invite_link';
 }
 
 export interface InterfaceUserUpdatePayload extends InterfaceGrantContext {
   role: string;
   old_role?: string | null;
+  via?: 'invite_link';
 }
 
 export interface InterfaceUserDeletePayload extends InterfaceGrantContext {
@@ -2155,6 +2206,17 @@ function interfaceTableSuffix(details: {
   return ` across ${count} tables`;
 }
 
+/** Interface and app links are recorded against their base; name the target when there is one. */
+function inviteLinkTarget(details: {
+  interface_title?: string;
+  app_title?: string;
+}) {
+  if (details.app_title) return `app '${details.app_title}'`;
+  return details.interface_title
+    ? `interface '${details.interface_title}'`
+    : 'base';
+}
+
 /** `page 'X' of ` — grants target either the whole interface or one page. */
 function interfaceGrantScope(details: {
   page_title?: string;
@@ -2217,16 +2279,37 @@ const descriptionTemplates = {
     audit.details?.via === 'invite_link'
       ? `User '${audit.details.user_email}' joined base via invite link`
       : `User '${audit.user}' invited '${audit.details.user_email}' to base`,
+  [AuditV1OperationTypes.APP_INVITE_LINK_ACCEPT]: (
+    audit: AuditV1<AppInviteLinkAcceptPayload>
+  ) =>
+    `User '${audit.details.user_email}' joined app '${
+      audit.details.app_title
+    }'${
+      audit.details.team_title ? ` in team '${audit.details.team_title}'` : ''
+    } via invite link`,
   [AuditV1OperationTypes.BASE_INVITE_LINK_CREATE]: (
     audit: AuditV1<InviteLinkPayload>
   ) =>
-    `User '${audit.user}' created a ${audit.details.role} invite link for base`,
+    // An app link's role is only the base standing; its team is what it grants.
+    audit.details.app_title
+      ? `User '${audit.user}' created an invite link for ${inviteLinkTarget(
+          audit.details
+        )}`
+      : `User '${audit.user}' created a ${
+          audit.details.role
+        } invite link for ${inviteLinkTarget(audit.details)}`,
   [AuditV1OperationTypes.BASE_INVITE_LINK_UPDATE]: (
     audit: AuditV1<InviteLinkUpdatePayload>
-  ) => `User '${audit.user}' updated an invite link for base`,
+  ) =>
+    `User '${audit.user}' updated an invite link for ${inviteLinkTarget(
+      audit.details
+    )}`,
   [AuditV1OperationTypes.BASE_INVITE_LINK_REVOKE]: (
     audit: AuditV1<InviteLinkPayload>
-  ) => `User '${audit.user}' revoked an invite link for base`,
+  ) =>
+    `User '${audit.user}' revoked an invite link for ${inviteLinkTarget(
+      audit.details
+    )}`,
   [AuditV1OperationTypes.WORKSPACE_INVITE_LINK_CREATE]: (
     audit: AuditV1<InviteLinkPayload>
   ) =>
@@ -2534,11 +2617,13 @@ const descriptionTemplates = {
   [AuditV1OperationTypes.INTERFACE_USER_INVITE]: (
     audit: AuditV1<InterfaceUserInvitePayload>
   ) =>
-    `${audit.details.principal_type === 'team' ? 'Team' : 'User'} '${
-      audit.details.principal_title
-    }' has been granted '${audit.details.role}' on ${interfaceGrantScope(
-      audit.details
-    )}interface '${audit.details.interface_title}'`,
+    audit.details.via === 'invite_link'
+      ? `User '${audit.details.principal_title}' joined interface '${audit.details.interface_title}' as '${audit.details.role}' via invite link`
+      : `${audit.details.principal_type === 'team' ? 'Team' : 'User'} '${
+          audit.details.principal_title
+        }' has been granted '${audit.details.role}' on ${interfaceGrantScope(
+          audit.details
+        )}interface '${audit.details.interface_title}'`,
   [AuditV1OperationTypes.INTERFACE_USER_UPDATE]: (
     audit: AuditV1<InterfaceUserUpdatePayload>
   ) =>
@@ -2548,7 +2633,9 @@ const descriptionTemplates = {
       audit.details.interface_title
     }' has been changed${
       audit.details.old_role ? ` from '${audit.details.old_role}'` : ''
-    } to '${audit.details.role}'`,
+    } to '${audit.details.role}'${
+      audit.details.via === 'invite_link' ? ' via invite link' : ''
+    }`,
   [AuditV1OperationTypes.INTERFACE_USER_DELETE]: (
     audit: AuditV1<InterfaceUserDeletePayload>
   ) =>

@@ -105,7 +105,7 @@ onMounted(() => {
 
     <div v-if="!progressEnd" class="flex items-center">
       <component :is="iconMap.loading" class="text-green-500 animate-spin" />
-      <span class="text-green-500 ml-2">Loading...</span>
+      <span class="text-green-500 ml-2">{{ $t('labels.loadingEllipsis') }}</span>
     </div>
 
     <NcButton
@@ -116,7 +116,7 @@ onMounted(() => {
       @click="downloadLogs('logs.txt')"
     >
       <nc-tooltip>
-        <template #title>Download Logs</template>
+        <template #title>{{ $t('labels.downloadLogs') }}</template>
         <component :is="iconMap.download" />
       </nc-tooltip>
     </NcButton>
@@ -130,14 +130,6 @@ onMounted(() => {
 </style>
 
 <style lang="scss">
-.nc-modal-create-source {
-  .nc-modal {
-    @apply !p-0;
-    height: min(calc(100vh - 100px), 1024px);
-    max-height: min(calc(100vh - 100px), 1024px) !important;
-  }
-}
-
 .nc-dropdown-ext-db-type {
   @apply !z-1000;
 }

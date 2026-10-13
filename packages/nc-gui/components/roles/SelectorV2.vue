@@ -22,6 +22,11 @@ const props = withDefaults(
     triggerVariant?: 'badge' | 'compact' | 'detail' | 'field'
     /** Passed to the badge trigger — see RolesBadge. */
     plain?: boolean
+    /** Per-role label overrides, e.g. an interface calls viewer "Read only". */
+    labels?: Partial<Record<string, string>>
+    /** Per-key description and icon overrides, for pickers whose keys are not roles (app teams). */
+    descriptions?: Partial<Record<string, string>>
+    icons?: Partial<Record<string, IconMapKey>>
   }>(),
   {
     border: true,
@@ -61,9 +66,9 @@ const roleSelectorOptions = computed<NcListItemType[]>(() => {
   return (props.disabledRoles || []).concat(props.roles || []).map((role: keyof typeof RoleLabels): NcListItemType => {
     return {
       value: role,
-      label: t(`objects.roleType.${RoleLabels[role] ?? role}`, role),
-      description: t(`objects.roleDescription.${role}`),
-      icon: RoleIcons[role],
+      label: props.labels?.[role] ?? t(`objects.roleType.${RoleLabels[role] ?? role}`, role),
+      description: props.descriptions?.[role] ?? t(`objects.roleDescription.${role}`),
+      icon: props.icons?.[role] ?? RoleIcons[role],
       color: RoleColors[role],
       ncItemDisabled: props.disabledRoles?.includes(role),
       ncItemTooltip: props.disabledRoles?.includes(role) ? props.disabledRolesTooltip?.[role] ?? '' : '',
@@ -75,9 +80,9 @@ const activeRole = computed(() => {
   const key = (props.effectiveRole || props.role) as keyof typeof RoleLabels
 
   return {
-    label: t(`objects.roleType.${RoleLabels[key] ?? key}`, key),
-    description: t(`objects.roleDescription.${key}`),
-    icon: RoleIcons[key] as IconMapKey,
+    label: props.labels?.[key] ?? t(`objects.roleType.${RoleLabels[key] ?? key}`, key),
+    description: props.descriptions?.[key] ?? t(`objects.roleDescription.${key}`),
+    icon: (props.icons?.[key] ?? RoleIcons[key]) as IconMapKey,
     color: RoleColors[key],
   }
 })

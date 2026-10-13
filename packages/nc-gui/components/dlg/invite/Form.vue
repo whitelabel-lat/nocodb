@@ -13,6 +13,7 @@ import {
 } from 'nocodb-sdk'
 
 import { extractEmail } from '../../../helpers/parsers/parserHelpers'
+import type { IconMapKey } from '#imports'
 
 const props = withDefaults(
   defineProps<{
@@ -22,12 +23,13 @@ const props = withDefaults(
      * off its own visibility flag.
      */
     active: boolean
-    type?: 'base' | 'workspace' | 'organization'
+    type?: 'base' | 'workspace' | 'organization' | 'interface' | 'app'
     isTeam?: boolean
     baseId?: string
     emails?: string[]
     workspaceId?: string
-    users?: Array<Pick<UserType, 'email'>>
+    /** `roles`, when set, are the only ones the user already holds; inviting them to another is allowed. */
+    users?: Array<Pick<UserType, 'email'> & { roles?: string[] }>
     teams?: Array<TeamV3V3Type>
     existingTeamIds?: string[]
     /**
@@ -39,6 +41,22 @@ const props = withDefaults(
     /** Hosts that draw their own footer pass false and drive it through `submit`. */
     showFooter?: boolean
     submitLabel?: string
+    /** Overrides the role list, e.g. an interface's editor/commenter/viewer. */
+    roles?: string[]
+    /** Per-role label overrides for the picker and the hint, e.g. an interface's "Read only". */
+    roleLabels?: Partial<Record<string, string>>
+    /** Per-role description and icon overrides, e.g. an app's teams. */
+    roleDescriptions?: Partial<Record<string, string>>
+    roleIcons?: Partial<Record<string, IconMapKey>>
+    /** How a role reads in the hint sentence, when its label would not ("a read-only member"). */
+    rolePhrase?: (role: string, count: number) => string | undefined
+    /** Roles that open nothing yet (an app team with no actions); the hint says so. */
+    noAccessRoles?: string[]
+    /**
+     * Sends the invites instead of the built-in base/workspace calls. Throw to report a failure;
+     * set `invitedEmails` on the error to report the ones that did go through.
+     */
+    inviteHandler?: (emails: string[], role: string) => Promise<void>
   }>(),
   {
     layout: 'stacked',
@@ -68,8 +86,9 @@ const { inviteCollaborator: inviteWsCollaborator, workspaceTeamAdd } = workspace
 
 const { isTeamsEnabled } = storeToRefs(workspaceStore)
 
+// The org-user picker only knows base and workspace targets.
 const { fetchOrgUsers, resetOrgUsers, orgUsers } = useOrgUserInvitePicker({
-  type: props.type,
+  type: props.type === 'interface' || props.type === 'app' ? undefined : props.type,
   workspaceId: props.workspaceId,
   baseId: props.baseId,
 })
@@ -79,7 +98,7 @@ const { isPaymentEnabled, showUserPlanLimitExceededModal, isPaidPlan, showUserMa
 const dialogShow = computed(() => props.active)
 
 const orderedRoles = computed(() => {
-  return props.type === 'base' ? ProjectRoles : WorkspaceUserRoles
+  return props.type === 'base' || props.type === 'interface' || props.type === 'app' ? ProjectRoles : WorkspaceUserRoles
 })
 
 const userRoles = computed(() => {
@@ -163,7 +182,16 @@ const focusOnDiv = () => {
 watch(
   dialogShow,
   async (newVal) => {
-    if (newVal) {
+    if (newVal && props.roles) {
+      allowedRoles.value = [...props.roles] as []
+      disabledRoles.value = []
+
+      if (!props.roles.includes(inviteData.roles)) inviteData.roles = props.roles[0] as ProjectRoles
+
+      setTimeout(() => {
+        focusOnDiv()
+      }, 100)
+    } else if (newVal) {
       try {
         let rolesArr = Object.values(orderedRoles.value)
 
@@ -309,9 +337,11 @@ const roleCopy = (count: number) => {
   const key = RoleLabels[inviteData.roles] ?? inviteData.roles
   const group = count > 1 ? 'roleTypePlural' : 'roleType'
 
+  const phrase = props.rolePhrase?.(inviteData.roles, count)
+
   return {
-    label: t(`objects.${group}.${key}`, inviteData.roles),
-    can: t(`objects.roleDescription.${inviteData.roles}`).toLowerCase(),
+    label: phrase ?? props.roleLabels?.[inviteData.roles] ?? t(`objects.${group}.${key}`, inviteData.roles),
+    can: (props.roleDescriptions?.[inviteData.roles] ?? t(`objects.roleDescription.${inviteData.roles}`)).toLowerCase(),
   }
 }
 
@@ -330,6 +360,13 @@ const fieldHint = computed(() => {
   // is the overload that carries `role` and `can` through.
   const role = roleCopy(count)
 
+  // A team description is a sentence of its own, not a verb phrase.
+  if (props.type === 'app') {
+    const key = props.noAccessRoles?.includes(inviteData.roles) ? 'msg.info.willJoinTeamNoAccess' : 'msg.info.willJoinTeam'
+
+    return t(key, { count, team: role.label }, count)
+  }
+
   return t('msg.info.willJoinAsRole', { count, role: role.label, can: role.can }, count)
 })
 
@@ -339,6 +376,8 @@ const showUserWillChargedWarning = computed(() => {
     !appInfo.value?.isOnPrem &&
     isPaymentEnabled.value &&
     isPaidPlan.value &&
+    // App users take no seat, whichever team they join.
+    props.type !== 'app' &&
     !NON_SEAT_ROLES.includes(inviteData.roles) &&
     showUserMayChargeAlert.value &&
     !isInviteButtonDisabled.value &&
@@ -471,11 +510,19 @@ const inviteCollaborator = async () => {
       const payloadData = recipients.join(',')
 
       for (const email of recipients) {
-        if (props.users?.some((u) => u.email === email.trim())) {
+        if (
+          props.users?.some(
+            (u) => u.email?.toLowerCase() === email.trim().toLowerCase() && (!u.roles || u.roles.includes(inviteData.roles)),
+          )
+        ) {
           let scopeLabel = 'objects.project'
 
           if (props.type === 'workspace') {
             scopeLabel = 'objects.workspace'
+          } else if (props.type === 'interface') {
+            scopeLabel = 'general.interface'
+          } else if (props.type === 'app') {
+            scopeLabel = 'objects.app'
           } else if (props.type === 'organization') {
             scopeLabel = 'general.organization'
           }
@@ -485,7 +532,9 @@ const inviteCollaborator = async () => {
         }
       }
 
-      if (props.type === 'base' && props.baseId) {
+      if (props.inviteHandler) {
+        await props.inviteHandler(recipients, inviteData.roles)
+      } else if (props.type === 'base' && props.baseId) {
         await createProjectUser(props.baseId!, {
           email: payloadData,
           roles: inviteData.roles,
@@ -535,6 +584,14 @@ const inviteCollaborator = async () => {
     emit('success', invited)
     emit('close')
   } catch (e: any) {
+    // A partial send: drop the addresses that went through, so a retry sends only the rest.
+    const partial: string[] = Array.isArray(e?.invitedEmails) ? e.invitedEmails : []
+    if (partial.length) {
+      emailBadges.value = emailBadges.value.filter((email) => !partial.includes(email))
+      if (partial.includes(inviteData.email.trim())) inviteData.email = ''
+      emit('success', partial)
+    }
+
     const errorInfo = await extractSdkResponseErrorMsgv2(e)
 
     if (isPaymentEnabled.value && errorInfo.error === NcErrorType.ERR_PLAN_LIMIT_EXCEEDED) {
@@ -811,6 +868,9 @@ defineExpose({
               :disabled-roles="disabledRoles"
               :disabled-roles-tooltip="disabledRolesTooltip"
               :roles="allowedRoles"
+              :labels="props.roleLabels"
+              :descriptions="props.roleDescriptions"
+              :icons="props.roleIcons"
               :trigger-variant="isCompose ? 'field' : 'detail'"
               class="nc-invite-role-selector"
               :class="{ '-ml-1.5': !isCompose }"

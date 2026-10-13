@@ -430,6 +430,13 @@ const [useProvideExpandedFormStore, useExpandedFormStore] = useInjectionState(
 
         if (missingRequiredColumns.size) return
 
+        // Defaults are prefilled into a new record, so an empty one was cleared: send it as null,
+        // or the database would put the default back.
+        for (const title of Object.keys(rowDefaultData(meta.value.columns))) {
+          const value = row.value.row[title]
+          if (value === null || value === undefined) insertObj[title] = null
+        }
+
         data = await $api.dbTableRow.create('noco', meta.value.base_id, meta.value.id, {
           ...insertObj,
           ...(ltarState || {}),
@@ -886,7 +893,13 @@ const [useProvideExpandedFormStore, useExpandedFormStore] = useInjectionState(
 
           activeDataListener.value = $ncSocket.onMessage(
             dataEventSubscriptionKey(newMeta, interfaceDataApi),
-            (data: DataPayload) => {
+            function onDataEvent(data: DataPayload) {
+              // Bulk writes (e.g. a workflow's Update record step) wrap per-row events.
+              if (data.action === 'bulk') {
+                if (Array.isArray(data.rows)) data.rows.forEach(onDataEvent)
+                return
+              }
+
               const { id, action, payload } = data
 
               const activePk = extractPkFromRow(row.value.row, meta.value?.columns as ColumnType[])

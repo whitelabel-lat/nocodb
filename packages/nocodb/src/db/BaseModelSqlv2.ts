@@ -15,7 +15,6 @@ import {
   ClientType,
   convertDurationToSeconds,
   CURRENT_USER_TOKEN,
-  enumColors,
   EventType,
   extractFilterFromXwhere,
   isAIPromptCol,
@@ -57,6 +56,7 @@ import type {
   DataUnlinkPayload,
   DataUpdatePayload,
   FilterType,
+  HookType,
   NcRequest,
   ParsedFormulaNode,
   UpdatePayload,
@@ -65,6 +65,7 @@ import type { Knex } from 'knex';
 import type CustomKnex from '~/db/CustomKnex';
 import type { XKnex } from '~/db/CustomKnex';
 import type { IBaseModelSqlV2 } from '~/db/IBaseModelSqlV2';
+import type { NestedLinkLastModifiedEntry } from '~/db/BaseModelSqlv2/nested-link-preparator';
 import type {
   XcFilter,
   XcFilterWithAlias,
@@ -80,7 +81,10 @@ import { AttachmentUrlUploadPreparator } from '~/db/BaseModelSqlv2/attachment-ur
 import { FieldHandler } from '~/db/field-handler';
 import { selectObject } from '~/db/BaseModelSqlv2/select-object';
 import { relationDataFetcher } from '~/db/BaseModelSqlv2/relation-data-fetcher';
-import { NestedLinkPreparator } from '~/db/BaseModelSqlv2/nested-link-preparator';
+import {
+  broadcastNestedLinkRefRows,
+  NestedLinkPreparator,
+} from '~/db/BaseModelSqlv2/nested-link-preparator';
 import { baseModelInsert } from '~/db/BaseModelSqlv2/insert';
 import {
   mssqlBuildBulkInsertWithCapture,
@@ -136,17 +140,21 @@ import getAst from '~/helpers/getAst';
 import { setModelContext } from '~/helpers/modelContext';
 import { sanitize, unsanitize } from '~/helpers/sqlSanitize';
 import {
+  Agent,
   Audit,
   BaseUser,
   Column,
   FileReference,
   Filter,
+  Hook,
   Model,
   PresignedUrl,
+  SelectOption,
   Sort,
   Source,
   User,
   View,
+  Workflow,
 } from '~/models';
 import Noco from '~/Noco';
 import { HANDLE_WEBHOOK } from '~/services/hook-handler.service';
@@ -188,6 +196,12 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const logger = new Logger('BaseModelSqlv2');
+
+// Max rows a bulkUpdateAll will snapshot pre-update values for. Bounds the
+// heaviest part of the after.bulkUpdate emission — a formatted record per
+// matched row, held until the UPDATE lands. Not the whole cost: the PK list
+// itself is still held whole (see collectAffectedPks).
+const BULK_UPDATE_ALL_PREV_SNAPSHOT_LIMIT = 10000;
 
 const JSON_COLUMN_TYPES = [UITypes.Button];
 
@@ -1741,7 +1755,10 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
                 colId: colOptions.fk_relation_column_id,
               });
               const relColOptions =
-                await relCol.getColOptions<LinkToAnotherRecordColumn>();
+                await relCol?.getColOptions<LinkToAnotherRecordColumn>();
+              // A link can outlive its nc_col_relations row; skip it rather
+              // than failing every read of the table.
+              if (!relColOptions) break;
               // A V2 junction mo/bt/oo link is a `Links` column, but its
               // resolver is registered under the bare title (select-object
               // skips its rollup count), so it must not take the `_nc_lk_`
@@ -1773,6 +1790,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
               this._columns[column.title] = column;
               const colOptions =
                 (await column.getColOptions()) as LinkToAnotherRecordColumn;
+              if (!colOptions) break;
 
               const { refContext } = colOptions.getRelContext();
 
@@ -3355,6 +3373,8 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
         );
       }
 
+      await broadcastNestedLinkRefRows(postInsertLastModifiedEntries);
+
       if (this.model.primaryKey && rowId !== null && rowId !== undefined) {
         response = await this.readRecord({
           idOrRecord: rowId,
@@ -3756,6 +3776,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
         number,
         ((rowId: any, trx?: Knex | Knex.Transaction) => Promise<string>)[]
       > = {};
+      const nestedLinkEntries: NestedLinkLastModifiedEntry[] = [];
 
       if (nestedCols.length) {
         for (let i = 0; i < toInsert.length; i++) {
@@ -3776,6 +3797,7 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
           });
 
           linkPostInsertOpsMap[i] = operations.postInsertOps;
+          nestedLinkEntries.push(...operations.postInsertLastModifiedEntries);
           linkPreInsertOps.push(...operations.preInsertOps);
         }
       }
@@ -3819,10 +3841,10 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
 
           const linkFields = extractLinkFieldsByTitle(original, nestedCols);
 
-          // `null` means "unlink all". The shared updater would turn it into
-          // `[null]` and then fail resolving that id, so send `[]` instead.
+          // `null` is not a link value — only `[]` clears. Drop it so the row's
+          // links stay untouched, matching PATCH.
           for (const title of Object.keys(linkFields)) {
-            linkFields[title] ??= [];
+            if (linkFields[title] == null) delete linkFields[title];
           }
 
           if (!Object.keys(linkFields).length) continue;
@@ -3999,6 +4021,8 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
           cookie,
         });
       }
+
+      await broadcastNestedLinkRefRows(nestedLinkEntries);
 
       const updatedRecords = await this.chunkList({
         pks: updatedPks,
@@ -4672,6 +4696,28 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
 
       const columns = await this.model.getColumns();
 
+      // bulkUpdateAll only tracks a row count, so afterBulkUpdate can't emit the
+      // per-row `after.bulkUpdate` webhook — this is why a bulk update via the
+      // Bulk Update extension never triggered webhooks (issue #10432). When an
+      // active bulk-update webhook or record-update workflow/agent trigger exists,
+      // snapshot the affected rows before and after the update and fire the hook.
+      // Gated so the no-listener path is free.
+      const hasBulkUpdateHooks =
+        !args.skipValidationAndHooks &&
+        !skip_hooks &&
+        (await this.hasActiveBulkUpdateHooks());
+
+      // Both snapshots address rows by PK, so a PK-less table (common for
+      // external/legacy sources) can't be emitted for.
+      const emitBulkUpdateHooks =
+        hasBulkUpdateHooks && this.model.primaryKeys?.length > 0;
+
+      if (hasBulkUpdateHooks && !emitBulkUpdateHooks) {
+        logger.warn(
+          `skipping after.bulkUpdate dispatch on ${this.model.id}: table has no primary key`,
+        );
+      }
+
       const updateData = await this.model.mapAliasToColumn(
         data,
         this.clientMeta,
@@ -4782,9 +4828,57 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
             )
           : updateData;
 
+        // Snapshot the affected rows (PKs + pre-update values) against the
+        // pre-update filter — the update may change the very columns the filter
+        // matched on, so re-selecting afterward would target the wrong rows.
+        let bulkUpdateHookPks: string[] | undefined;
+        let bulkUpdateHookPrev: Map<string, Record<string, any>> | undefined;
+        if (emitBulkUpdateHooks) {
+          // Webhook bookkeeping must never fail the update itself, same as
+          // bulkAudit.
+          try {
+            bulkUpdateHookPks = await this.collectAffectedPks(qb.clone());
+
+            // The prev snapshot has to be read before the UPDATE, so unlike the
+            // emission below it can't be streamed — it would hold the whole
+            // matched set in memory. Past the cap, emit without previous values
+            // instead: the hook still fires for every row, but enters-view and
+            // matches-condition triggers skip rows they can't diff.
+            if (
+              bulkUpdateHookPks.length <= BULK_UPDATE_ALL_PREV_SNAPSHOT_LIMIT
+            ) {
+              bulkUpdateHookPrev = await this.readRecordsMapByPks(
+                bulkUpdateHookPks,
+              );
+            } else {
+              logger.warn(
+                `bulkUpdateAll on ${this.model.id} matched ${bulkUpdateHookPks.length} rows, above the ${BULK_UPDATE_ALL_PREV_SNAPSHOT_LIMIT}-row snapshot cap — after.bulkUpdate will fire without previous values; enters-view and matches-condition triggers skip these rows.`,
+              );
+            }
+          } catch (e) {
+            bulkUpdateHookPks = undefined;
+            bulkUpdateHookPrev = undefined;
+            logger.error(e.message, e.stack);
+          }
+        }
+
         qb.update(updateDataForDriver);
 
         await this.execAndParse(qb, null, { raw: true });
+
+        if (bulkUpdateHookPks?.length) {
+          // Write is already committed here — a failed emission must not 500
+          // the request or skip the audit write that follows.
+          try {
+            await this.emitBulkUpdateAllHooks(
+              bulkUpdateHookPks,
+              bulkUpdateHookPrev,
+              cookie,
+            );
+          } catch (e) {
+            logger.error(e.message, e.stack);
+          }
+        }
       }
 
       if (!args.skipValidationAndHooks && !skip_hooks)
@@ -4793,6 +4887,116 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
       return count;
     } catch (e) {
       throw e;
+    }
+  }
+
+  // Whether the model has an active webhook interested in bulk updates. Uses the
+  // same lookup handleHooks performs for 'after.bulkUpdate' so the gate can't
+  // drift from what would actually be dispatched (v3 hooks encode 'update' as a
+  // bitmask that also covers the bulk variant — Hook.list normalises this).
+  // Workflow and agent triggers ride the same dispatch, so they count too.
+  protected async hasActiveBulkUpdateHooks(): Promise<boolean> {
+    const hooks = await Hook.list(this.context, {
+      fk_model_id: this.model.id,
+      event: 'after',
+      operation: 'bulkUpdate' as HookType['operation'][0],
+    });
+    if (hooks.some((hook) => hook.active)) return true;
+
+    const [hasWorkflows, hasAgents] = await Promise.all([
+      Workflow.hasRecordUpdateTriggers(this.context, this.model.id),
+      Agent.hasRecordUpdateTriggers(this.context, this.model.id),
+    ]);
+    return hasWorkflows || hasAgents;
+  }
+
+  // Collect the primary-key values of every row matching the (pre-update) query
+  // builder. Read in batches so no single query buffers the whole table — but
+  // the returned array does hold every matched PK, so a very large
+  // bulkUpdateAll on a hooked table pays for it in memory. Only the pre-update
+  // value snapshot is capped (BULK_UPDATE_ALL_PREV_SNAPSHOT_LIMIT).
+  protected async collectAffectedPks(qb: Knex.QueryBuilder): Promise<string[]> {
+    const pks: string[] = [];
+    const batchSize = 1000;
+    let batchStart = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const pkQb = qb.clone().clear('select');
+      for (const pk of this.model.primaryKeys) {
+        pkQb.select(this.dbDriver.raw('?? as ??', [pk.column_name, pk.title]));
+      }
+      pkQb.limit(batchSize).offset(batchStart);
+      // Every PK column, not just the first — limit/offset paging needs a total
+      // order or a composite PK can skip or repeat rows across batches.
+      for (const pk of this.model.primaryKeys) {
+        pkQb.orderBy(pk.column_name);
+      }
+
+      const rows = await this.execAndParse(pkQb);
+      if (!rows?.length) break;
+
+      for (const row of rows) {
+        const pkValue = this.extractPksValues(row, true);
+        if (pkValue !== null && pkValue !== undefined) pks.push(pkValue);
+      }
+
+      if (rows.length < batchSize) break;
+      batchStart += batchSize;
+    }
+    return pks;
+  }
+
+  // Read fully-formatted records for the given primary keys, keyed by PK, in
+  // chunks. Reused to snapshot rows both before and after a bulkUpdateAll.
+  protected async readRecordsMapByPks(
+    pks: string[],
+  ): Promise<Map<string, Record<string, any>>> {
+    const readChunkSize = 100;
+    const map = new Map<string, Record<string, any>>();
+    const { ast, parsedQuery } = await getAst(this.context, {
+      model: this.model,
+      query: {},
+      extractOnlyPrimaries: false,
+    });
+    for (let i = 0; i < pks.length; i += readChunkSize) {
+      const chunk = pks.slice(i, i + readChunkSize);
+      const list = await this.list(
+        { pks: chunk.join(',') },
+        { limitOverride: chunk.length },
+      );
+      const records = await nocoExecute(ast, list, {}, parsedQuery);
+      for (const record of records) {
+        map.set(this.extractPksValues(record, true), record);
+      }
+    }
+    return map;
+  }
+
+  // Emit `after.bulkUpdate` for a bulkUpdateAll, reading the post-update rows in
+  // chunks and firing one hook per chunk so a large update doesn't build a
+  // single unbounded webhook payload.
+  protected async emitBulkUpdateAllHooks(
+    pks: string[],
+    prevData: Map<string, Record<string, any>> | undefined,
+    cookie: NcRequest,
+  ): Promise<void> {
+    const emitChunkSize = 100;
+    for (let i = 0; i < pks.length; i += emitChunkSize) {
+      const chunkPks = pks.slice(i, i + emitChunkSize);
+      const newMap = await this.readRecordsMapByPks(chunkPks);
+
+      const prevBatch: Record<string, any>[] = [];
+      const newBatch: Record<string, any>[] = [];
+      for (const pk of chunkPks) {
+        const newRow = newMap.get(pk);
+        if (!newRow) continue;
+        newBatch.push(newRow);
+        prevBatch.push(prevData?.get(pk) ?? null);
+      }
+
+      if (newBatch.length) {
+        await this.handleHooks('after.bulkUpdate', prevBatch, newBatch, cookie);
+      }
     }
   }
 
@@ -6127,21 +6331,14 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
         await this.validateOptions(column, data);
       } catch (ex) {
         if (ex instanceof OptionsNotExistsError && typecast) {
-          const UpdatedColumn = await Column.update(this.context, column.id, {
-            ...column,
-            colOptions: {
-              options: [
-                ...column.colOptions.options,
-                ...ex.options.map((k, index) => ({
-                  fk_column_id: column.id,
-                  title: k,
-                  color: enumColors.get(
-                    'light',
-                    (column.colOptions.options ?? []).length + index,
-                  ),
-                })),
-              ],
-            },
+          const options = await SelectOption.appendMissing(
+            this.context,
+            column,
+            ex.options,
+          );
+          column.colOptions = { options };
+          const UpdatedColumn = await Column.get(this.context, {
+            colId: column.id,
           });
 
           const table = await Model.getWithInfo(this.context, {
@@ -9470,11 +9667,11 @@ class BaseModelSqlv2 implements IBaseModelSqlV2 {
           column.uidt,
         )
       ) {
-        // Resolve @me token in default value for User columns during insert
+        // Resolve @me default only when the field is omitted; an explicit null clears it
         if (
           isInsertData &&
           column.uidt === UITypes.User &&
-          ncIsNullOrUndefined(data[column.column_name]) &&
+          data[column.column_name] === undefined &&
           column.cdf &&
           typeof column.cdf === 'string' &&
           column.cdf.includes(CURRENT_USER_TOKEN) &&

@@ -1,4 +1,5 @@
-// Shareable invite links, for a base or a whole workspace.
+// Shareable invite links, for a base, a whole workspace, one interface or one
+// app.
 //
 // Unlike `invite_token` on a base/workspace user — minted per invited email,
 // 24h, consumed at signup — an invite link is a standing grant that anyone
@@ -14,6 +15,8 @@ import { ProjectRoles, WorkspaceUserRoles } from '~/lib/enums';
 export enum InviteLinkScope {
   BASE = 'base',
   WORKSPACE = 'workspace',
+  INTERFACE = 'interface',
+  APP = 'app',
 }
 
 /**
@@ -39,6 +42,23 @@ export const WORKSPACE_INVITE_LINK_ROLES = [
   WorkspaceUserRoles.VIEWER,
 ] as const;
 
+/**
+ * Interface links use the base-role vocabulary and are mapped to interface
+ * roles (ProjectRolesToInterfaceRoles) when redeemed, as the interface member
+ * UI does for display.
+ */
+export const INTERFACE_INVITE_LINK_ROLES = [
+  ProjectRoles.EDITOR,
+  ProjectRoles.COMMENTER,
+  ProjectRoles.VIEWER,
+] as const;
+
+/**
+ * App access is App Team membership, not a role: an app link names its team in
+ * `fk_app_team_id`, and `role` only records the base standing a redeemer gets.
+ */
+export const APP_INVITE_LINK_ROLES = [ProjectRoles.APP_USER] as const;
+
 export type BaseInviteLinkRole = (typeof BASE_INVITE_LINK_ROLES)[number];
 export type WorkspaceInviteLinkRole =
   (typeof WORKSPACE_INVITE_LINK_ROLES)[number];
@@ -46,10 +66,18 @@ export type InviteLinkRole = BaseInviteLinkRole | WorkspaceInviteLinkRole;
 
 export const inviteLinkRolesFor = (
   scope: InviteLinkScope
-): readonly InviteLinkRole[] =>
-  scope === InviteLinkScope.WORKSPACE
-    ? WORKSPACE_INVITE_LINK_ROLES
-    : BASE_INVITE_LINK_ROLES;
+): readonly InviteLinkRole[] => {
+  switch (scope) {
+    case InviteLinkScope.WORKSPACE:
+      return WORKSPACE_INVITE_LINK_ROLES;
+    case InviteLinkScope.INTERFACE:
+      return INTERFACE_INVITE_LINK_ROLES;
+    case InviteLinkScope.APP:
+      return APP_INVITE_LINK_ROLES;
+    default:
+      return BASE_INVITE_LINK_ROLES;
+  }
+};
 
 export const isInviteLinkRole = (
   scope: InviteLinkScope,
@@ -88,13 +116,25 @@ export type InviteLinkUnusableReason =
   /** The role is no longer one a link may grant (e.g. inherit). */
   | 'retired_role'
   /** The base is private, or gone, and the minter is not its owner. */
-  | 'private_base';
+  | 'private_base'
+  /** The app team the link adds people to was deleted. */
+  | 'team_removed'
+  /** Every allowed use has been taken. */
+  | 'exhausted'
+  /** Past its expiry date. */
+  | 'expired';
 
 export interface InviteLinkType {
   id?: string;
   scope?: InviteLinkScope;
   base_id?: string | null;
   fk_workspace_id?: string | null;
+  /** Set for interface links; `base_id` is then the interface's base. */
+  fk_interface_id?: string | null;
+  /** Set for app links; `base_id` is then the app's base. */
+  fk_app_id?: string | null;
+  /** The app team an app link adds its redeemer to. */
+  fk_app_team_id?: string | null;
   role?: InviteLinkRole;
   /**
    * Restrict redemption to verified emails at this domain, e.g. `acme.io`.
@@ -134,6 +174,8 @@ export interface InviteLinkType {
 
 export interface InviteLinkReqType {
   role: InviteLinkRole;
+  /** App links only: the team the link adds people to. */
+  fk_app_team_id?: string;
   email_domain?: string | null;
   /** Days from now. Undefined means the default; 0 means never expires. */
   expires_in_days?: number | null;
@@ -155,9 +197,11 @@ export type InviteLinkInvalidReason =
 /** What a holder of the token is allowed to learn before redeeming it. */
 export interface InviteLinkPreviewType {
   scope?: InviteLinkScope;
-  /** Base title, or workspace title for a workspace link. */
+  /** Base, workspace, interface or app title, per scope. */
   target_title?: string;
   role?: InviteLinkRole;
+  /** App links: the team on offer, shown in place of the role. */
+  team_title?: string;
   email_domain?: string | null;
   /** Set when the link cannot be redeemed, so the page can say why. */
   invalid_reason?: InviteLinkInvalidReason;
@@ -169,4 +213,6 @@ export interface InviteLinkPreviewType {
   already_member?: boolean;
   base_id?: string | null;
   workspace_id?: string | null;
+  interface_id?: string | null;
+  app_id?: string | null;
 }

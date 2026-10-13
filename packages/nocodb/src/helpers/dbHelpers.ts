@@ -367,6 +367,11 @@ export function isDocsRealtimeEnabled() {
   return process.env.NC_DOCS_REALTIME !== 'false';
 }
 
+// Re-exported so existing callers keep their import path; the definition lives
+// in a leaf module because the socket-layer coherence gate cannot reach this
+// file (it imports the `~/models` barrel — load-time cycle).
+export { isCollabRealtimeEnabled } from '~/helpers/collabFlags';
+
 export function getRelatedLinksColumn(
   column: Column<LinkToAnotherRecordColumn>,
   relatedModel: Model,
@@ -746,7 +751,9 @@ export function shouldSkipField(
       pkAndPvOnly &&
       !column.pk &&
       !column.pv &&
-      column.id !== fk_display_value_column_id
+      column.id !== fk_display_value_column_id &&
+      !fieldsSet?.has(column.title) &&
+      !fieldsSet?.has(column.id)
     )
       return true;
 

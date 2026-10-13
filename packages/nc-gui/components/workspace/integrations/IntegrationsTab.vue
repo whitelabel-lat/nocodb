@@ -37,6 +37,12 @@ const { syncDataUpvotes, updateSyncDataUpvotes } = useGlobal()
 
 const { isFeatureEnabled } = useBetaFeatureToggle()
 
+const isSettingsSidebar = inject(IsSettingsSidebarInj, ref(false))
+
+// Hosted as a settings shell pane (not the new-connection modal): the shell's
+// gutter sets both edges, and its header band titles and describes the pane.
+const isShellPane = computed(() => isSettingsSidebar.value && !isModal)
+
 const { activeWorkspace } = storeToRefs(useWorkspace())
 
 const { isEEFeatureBlocked, blockAiIntegrations, showUpgradeToUseAiIntegrations, showEEFeatures } = useEeConfig()
@@ -333,10 +339,11 @@ watch(activeViewTab, (value) => {
     :is="isModal ? NcModal : 'div'"
     v-model:visible="isAddNewIntegrationModalOpen"
     centered
-    size="large"
+    size="feature"
     :class="{
       'h-full': !isModal,
     }"
+    nc-modal-class-name="!p-0"
     wrap-class-name="nc-modal-available-integrations-list"
     @keydown.esc="isAddNewIntegrationModalOpen = false"
   >
@@ -361,10 +368,10 @@ watch(activeViewTab, (value) => {
             'h-full': !isModal,
           }"
         >
-          <div v-if="integrationListContainerWidth" class="px-6 pt-4">
+          <div v-if="integrationListContainerWidth" :class="isShellPane ? 'nc-shell-gutter pt-3' : 'px-6 pt-4'">
             <!-- Title and search share a line: search filters the whole pane. -->
-            <div class="flex flex-wrap items-center justify-between gap-3 m-auto nc-content-max-w">
-              <div class="flex-1 min-w-60">
+            <div class="flex flex-wrap items-center justify-between gap-3 m-auto" :class="{ 'nc-content-max-w': !isShellPane }">
+              <div v-if="!isShellPane" class="flex-1 min-w-60">
                 <h2 v-if="showTitle" class="text-lg font-semibold text-nc-content-gray mb-1">
                   {{ $t('general.integrations') }}
                 </h2>
@@ -385,7 +392,10 @@ watch(activeViewTab, (value) => {
                 ref="searchInputRef"
                 v-model:value="searchQuery"
                 type="text"
-                class="nc-input-border-on-value nc-search-integration-input !rounded-lg !py-2 !h-9 !w-full sm:!w-80 flex-none"
+                class="nc-input-border-on-value nc-search-integration-input"
+                :class="
+                  isShellPane ? 'flex-1 !min-w-60 !max-w-90 nc-input-sm' : '!rounded-lg !py-2 !h-9 !w-full sm:!w-80 flex-none'
+                "
                 :placeholder="
                   showActiveConnections
                     ? $t('placeholder.searchConnectionsOrIntegrations')
@@ -402,7 +412,8 @@ watch(activeViewTab, (value) => {
 
           <div
             ref="integrationListRef"
-            class="flex-1 px-6 pb-8 flex flex-col nc-workspace-settings-integrations-list overflow-y-auto nc-scrollbar-thin"
+            class="flex-1 pb-8 flex flex-col nc-workspace-settings-integrations-list overflow-y-auto nc-scrollbar-thin"
+            :class="isShellPane ? 'nc-shell-gutter' : 'px-6'"
           >
             <div
               v-if="integrationListContainerWidth"
@@ -411,7 +422,7 @@ watch(activeViewTab, (value) => {
                 'flex-1': isEmptyList,
               }"
             >
-              <div class="flex flex-col space-y-6 w-full nc-content-max-w">
+              <div class="flex flex-col space-y-6 w-full" :class="{ 'nc-content-max-w': !isShellPane }">
                 <!-- Full-page skeleton during initial load (non-modal only) -->
                 <WorkspaceIntegrationsSkeleton v-if="showActiveConnections && !isModal && !isLoadedIntegrations" />
 
@@ -697,11 +708,6 @@ watch(activeViewTab, (value) => {
 
 <style lang="scss">
 .nc-modal-available-integrations-list {
-  .nc-modal {
-    @apply !p-0;
-    height: min(calc(100vh - 100px), 1024px);
-    max-height: min(calc(100vh - 100px), 1024px) !important;
-  }
   .ant-modal-content {
     overflow: hidden;
   }

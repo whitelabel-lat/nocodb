@@ -128,6 +128,7 @@ antd.variable.css
 .nc-dev-proxy.pid
 .nc-dev-proxy.log
 .nc-dev-logs/
+.nc-dev-env/
 
 # Local-only payment-dev secrets (license-server private key, etc.) — never commit
 scripts/.payment-dev-secrets.env
@@ -144,3 +145,8 @@ GUIDE.md
 /script.sh
 # One-off screenshot harness, machine-specific paths
 /.nc-shot.cjs
+
+# dev picker comments (scripts/dev-comments.mjs)
+.dev-comments.jsonl
+.dev-comments-threads.json
+.dev-comments.log

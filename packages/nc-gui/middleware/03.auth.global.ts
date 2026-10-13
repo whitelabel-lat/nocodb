@@ -98,7 +98,8 @@ function stripContinueParam(fullPath: string) {
 export default defineNuxtRouteMiddleware(async (to, from) => {
   const state = useGlobal()
 
-  const { api } = useApi({ useGlobalInstance: true })
+  // Not useApi(): it adds interceptors to the shared $api on every call, and this runs on every navigation
+  const { $api: api } = useNuxtApp()
 
   const { allRoles, loadRoles } = useRoles()
 
@@ -204,7 +205,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
       // context resolves; a half-populated user.roles can otherwise bounce
       // the user to / and complete a redirect loop.
       if (state.user.value?.id && state.user.value.roles?.guest) {
-        message.error("You don't have enough permission to access the base.")
+        message.error("You don't have enough permission to access the project.")
 
         return navigateTo('/')
       }
@@ -219,7 +220,7 @@ async function tryGoogleAuth(api: Api<any>, signIn: Actions['signIn']) {
   if (window.location.search && /\bscope=|\bstate=/.test(window.location.search) && /\bcode=/.test(window.location.search)) {
     let extraProps: any = {}
     try {
-      let authProvider = 'google'
+      let authProvider: 'google' | 'github' | 'oidc' = 'google'
       if (window.location.search.includes('state=github')) {
         authProvider = 'github'
       } else if (window.location.search.includes('state=oidc')) {
@@ -235,6 +236,8 @@ async function tryGoogleAuth(api: Api<any>, signIn: Actions['signIn']) {
       extraProps = extra || {}
 
       signIn(token)
+      // the staged click is lost when the callback opens in another tab; GitHub has no badge
+      commitPendingAuthMethod(authProvider === 'github' ? undefined : authProvider)
     } catch (e: any) {
       message.error(await extractSdkResponseErrorMsg(e))
     }
@@ -268,10 +271,15 @@ async function tryShortTokenAuth(api: Api<any>, signIn: Actions['signIn'], state
     // short-token still in the URL and fire a duplicate exchange, which
     // rotates token_version server-side and invalidates the token issued by
     // the first call (session dies right after signin).
-    const shortToken = new URLSearchParams(window.location.search).get('short-token')
+    const params = new URLSearchParams(window.location.search)
+    const shortToken = params.get('short-token')
+    // `/sso/:id/redirect` hands back the page sign-in started from under its
+    // own name; it becomes `continueAfterSignIn` only after the exchange.
+    const redirectContinue = params.get('continueAfterSso')
 
     const cleanURL = new URL(window.location.href)
     cleanURL.searchParams.delete('short-token')
+    cleanURL.searchParams.delete('continueAfterSso')
     cleanURL.searchParams.delete('continueAfterSignIn')
     window.history.pushState('object', document.title, cleanURL.toString())
 
@@ -296,6 +304,7 @@ async function tryShortTokenAuth(api: Api<any>, signIn: Actions['signIn'], state
       if (state.lastUsedAuthMethod) state.lastUsedAuthMethod.value = 'sso'
 
       signIn(token)
+      commitPendingAuthMethod('sso')
     } catch (e: any) {
       if (e?.response?.data?.error === NcErrorType.ERR_MAX_WORKSPACE_LIMIT_REACHED) {
         // Store error information in global state
@@ -310,9 +319,11 @@ async function tryShortTokenAuth(api: Api<any>, signIn: Actions['signIn'], state
     }
 
     // `extra` is only populated on the authorization-callback request, never on
-    // this `/auth/long-lived-token` exchange, so SAML and every `/sso/:id` client
-    // type has to fall back to the stored target. Same reload hazard as above.
-    const continueAfterSignIn = extraProps?.continueAfterSignIn ?? consumeStoredContinuePath()
+    // this `/auth/long-lived-token` exchange. `/sso/:id` OIDC and SAML clients
+    // return the target on the redirect; others fall back to the stored one.
+    // Always consume the stored value so it cannot hijack a later sign-in.
+    const storedContinue = consumeStoredContinuePath()
+    const continueAfterSignIn = extraProps?.continueAfterSignIn ?? redirectContinue ?? storedContinue
     if (continueAfterSignIn && isSafeContinuePath(continueAfterSignIn)) {
       const continueURL = new URL(window.location.href)
       continueURL.searchParams.set('continueAfterSignIn', continueAfterSignIn)

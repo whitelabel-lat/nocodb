@@ -14,8 +14,8 @@ const FEATURES = [
   },
   {
     id: 'bases_v3',
-    title: 'Bases V3',
-    description: 'Experience the next generation of NocoDB with Bases V3 with and enhanced performance and optimizations.',
+    title: 'Projects V3',
+    description: 'Experience the next generation of NocoDB with Projects V3 with and enhanced performance and optimizations.',
     enabled: false,
     version: 1,
   },
@@ -114,8 +114,8 @@ const FEATURES = [
   // },
   {
     id: 'cross_base_link',
-    title: 'Cross Base Link',
-    description: 'Enables link creation between tables in different bases.',
+    title: 'Cross Project Link',
+    description: 'Enables link creation between tables in different projects.',
     enabled: false,
     version: 1,
     isEE: true,
@@ -194,7 +194,7 @@ const FEATURES = [
   {
     id: 'workflows_tab',
     title: 'Workflows tab',
-    description: 'Enable workflows tab in base overview to manage workflows.',
+    description: 'Enable workflows tab in project overview to manage workflows.',
     enabled: false,
     version: 1,
     isEngineering: true,
@@ -303,7 +303,7 @@ const FEATURES = [
   {
     id: 'connect_ai',
     title: 'Connect your AI',
-    description: 'Show the Connect your AI card in the base sidebar, for connecting an AI client over MCP.',
+    description: 'Show the Connect your AI card in the project sidebar, for connecting an AI client over MCP.',
     enabled: false,
     version: 1,
     isEngineering: true,
@@ -316,6 +316,17 @@ const FEATURES = [
     enabled: false,
     version: 1,
     isEngineering: true,
+  },
+  {
+    // id is persisted in localStorage and drives FEATURE_FLAG — renaming it
+    // would silently reset the toggle for anyone who had it on.
+    id: 'multiple_sso_clients',
+    title: 'Multiple SSO providers',
+    description: 'Allow configuring more than one SAML / OpenID provider.',
+    enabled: false,
+    version: 1,
+    isEngineering: true,
+    isEE: true,
   },
 ] as const
 
