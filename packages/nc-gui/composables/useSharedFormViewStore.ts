@@ -138,9 +138,9 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
   )
 
   // Guards the "redirect on submit" sink (`window.location.href = redirectUrl`).
-  // `isSafeRedirectUrl` rejects control-char scheme smuggling and
-  // allows only http(s)/relative targets — see utils/redirectUrl.ts.
-  const isValidRedirectUrl = computed(() => isSafeRedirectUrl(sharedFormView.value?.redirect_url))
+  // `isHttpRedirectUri` rejects control-char scheme smuggling and
+  // allows only absolute http(s) targets — see utils/redirectUrl.ts.
+  const isValidRedirectUrl = computed(() => isHttpRedirectUri(sharedFormView.value?.redirect_url))
 
   const backgroundAndTextColor = computed(() => {
     const result = {

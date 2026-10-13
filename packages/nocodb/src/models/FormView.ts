@@ -11,7 +11,7 @@ import { PresignedUrl } from '~/models';
 import FormViewColumn from '~/models/FormViewColumn';
 import View from '~/models/View';
 import { extractProps } from '~/helpers/extractProps';
-import { isSafeRedirectUrl } from '~/helpers/isSafeRedirectUrl';
+import { isAbsoluteHttpRedirectUrl } from '~/helpers/isSafeRedirectUrl';
 import { NcError } from '~/helpers/catchError';
 import { isEE } from '~/utils';
 import NocoCache from '~/cache/NocoCache';
@@ -144,14 +144,14 @@ export default class FormView implements FormViewType {
     ]);
 
     // Reject unsafe redirect targets at the write path — defense-in-depth for
-    // the shared-form redirect XSS. See isSafeRedirectUrl.
+    // the shared-form redirect XSS. See isAbsoluteHttpRedirectUrl.
     if (
       typeof insertObj.redirect_url === 'string' &&
       insertObj.redirect_url.trim() &&
-      !isSafeRedirectUrl(insertObj.redirect_url)
+      !isAbsoluteHttpRedirectUrl(insertObj.redirect_url)
     ) {
       NcError.get(context).badRequest(
-        'Invalid redirect_url: only http(s) or relative URLs are allowed',
+        'Invalid redirect_url: only absolute http(s) URLs are allowed',
       );
     }
 
@@ -209,14 +209,14 @@ export default class FormView implements FormViewType {
     ]);
 
     // Reject unsafe redirect targets at the write path — defense-in-depth for
-    // the shared-form redirect XSS. See isSafeRedirectUrl.
+    // the shared-form redirect XSS. See isAbsoluteHttpRedirectUrl.
     if (
       typeof updateObj.redirect_url === 'string' &&
       updateObj.redirect_url.trim() &&
-      !isSafeRedirectUrl(updateObj.redirect_url)
+      !isAbsoluteHttpRedirectUrl(updateObj.redirect_url)
     ) {
       NcError.get(context).badRequest(
-        'Invalid redirect_url: only http(s) or relative URLs are allowed',
+        'Invalid redirect_url: only absolute http(s) URLs are allowed',
       );
     }
 

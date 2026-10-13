@@ -18,4 +18,6 @@ export const ceUiFeatures = {
   hideJoinCloud: true,
   /** "Hide field names" toggle on Gallery and Kanban cards (`meta.is_field_header_visible`, no backend needed). */
   cardFieldHeader: true,
+  /** "Redirect to URL" after submitting a form (`redirect_url` stored by FormView, only absolute http(s) accepted). */
+  formRedirect: true,
 } as const

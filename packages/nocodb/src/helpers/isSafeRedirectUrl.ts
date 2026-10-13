@@ -41,3 +41,20 @@ export function isSafeRedirectUrl(rawUrl: unknown): boolean {
     return false;
   }
 }
+
+/**
+ * Stricter variant used for the shared-form "redirect on submit" target:
+ * only ABSOLUTE http(s) URLs. Relative and protocol-relative (`//host`) URLs
+ * are rejected, so the redirect target is always explicit.
+ * Mirrors `isHttpRedirectUri` in `nc-gui/utils/redirectUrl.ts`.
+ */
+export function isAbsoluteHttpRedirectUrl(rawUrl: unknown): boolean {
+  if (!isSafeRedirectUrl(rawUrl)) return false;
+
+  try {
+    const { protocol } = new URL((rawUrl as string).trim());
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

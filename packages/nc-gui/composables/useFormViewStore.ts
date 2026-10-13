@@ -169,10 +169,10 @@ const [useProvideFormViewStore, useFormViewStore] = useInjectionState(
 
       const url = formViewData.value?.redirect_url?.trim() ?? ''
 
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      if (!isHttpRedirectUri(url)) {
         return {
           validateStatus: 'error',
-          help: 'Redirect url must starts with `http://` or `https://`',
+          help: 'Redirect url must be an absolute `http://` or `https://` URL',
         }
       }
 

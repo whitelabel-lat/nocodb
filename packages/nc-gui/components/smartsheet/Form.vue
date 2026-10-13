@@ -2576,7 +2576,7 @@ const { message: templatedMessage } = useTemplatedMessage(
                                     />
                                   </span>
                                   <a-switch
-                                    v-if="isEeUI"
+                                    v-if="isEeUI || ceUiFeatures.formRedirect"
                                     v-e="[`a:form-view:redirect-url`]"
                                     :checked="isOpenRedirectUrl"
                                     size="small"
