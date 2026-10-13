@@ -66,6 +66,35 @@ export function parseBody(
   }
 }
 
+// A filter toggled off (`enabled` false/0) is skipped, same as conditionV2 and
+// the SDK row validator. null/undefined (rows created before the toggle) stay active.
+function isFilterDisabled(filter: Filter): boolean {
+  return filter.enabled === false || (filter.enabled as any) === 0;
+}
+
+/**
+ * True when the condition tree has at least one enabled leaf filter. A
+ * condition with no active filters behaves as if there were no filters.
+ */
+export async function hasActiveCondition(
+  context: NcContext,
+  filters: Filter[],
+  { skipFetchingChildren = false }: { skipFetchingChildren?: boolean } = {},
+): Promise<boolean> {
+  for (const _filter of filters || []) {
+    const filter = _filter instanceof Filter ? _filter : new Filter(_filter);
+    if (isFilterDisabled(filter)) continue;
+    if (!filter.is_group) return true;
+    if (!getModelContext(filter)) setModelContext(filter, context);
+    const children = skipFetchingChildren
+      ? filter.children || []
+      : filter.children || (await filter.getChildren());
+    if (await hasActiveCondition(context, children, { skipFetchingChildren }))
+      return true;
+  }
+  return false;
+}
+
 export async function validateCondition(
   context: NcContext,
   filters: Filter[],
@@ -85,6 +114,7 @@ export async function validateCondition(
   let isValid = null;
   for (const _filter of filters) {
     const filter = _filter instanceof Filter ? _filter : new Filter(_filter);
+    if (isFilterDisabled(filter)) continue;
     if (!getModelContext(filter)) setModelContext(filter, context);
     let res;
     if (filter.is_group) {
@@ -93,6 +123,13 @@ export async function validateCondition(
       filter.children = skipFetchingChildren
         ? filter.children || []
         : filter.children || (await filter.getChildren());
+      // a group with no enabled filters left is ignored
+      if (
+        !(await hasActiveCondition(context, filter.children, {
+          skipFetchingChildren,
+        }))
+      )
+        continue;
       res = await validateCondition(context, filter.children, data, {
         client,
         skipFetchingChildren,
@@ -396,7 +433,8 @@ export async function validateCondition(
         break;
     }
   }
-  return isValid;
+  // every filter was disabled: behave as if there were no filters
+  return isValid ?? true;
 }
 
 /**

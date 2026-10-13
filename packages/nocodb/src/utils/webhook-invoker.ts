@@ -24,6 +24,7 @@ import { NcError } from '~/helpers/ncError';
 import NcPluginMgrv2 from '~/helpers/NcPluginMgrv2';
 import {
   handleHttpWebHook,
+  hasActiveCondition,
   parseBody,
   sanitizeUserForHook,
   validateCondition,
@@ -401,6 +402,9 @@ export class WebhookInvoker {
       // payload, not a record row), so skip the record-condition check here.
       if (hook.condition && !testHook && (hook.event as any) !== 'comment') {
         filters = testFilters || (await hook.getFilters());
+        // filters toggled off do not count: with no active filter the
+        // condition behaves as if none were defined
+        const hasConditions = await hasActiveCondition(context, filters);
 
         if (isBulkOperation) {
           const filteredData = [];
@@ -413,7 +417,7 @@ export class WebhookInvoker {
             // if filters are not defined then skip the check
             if (
               pData &&
-              filters.length &&
+              hasConditions &&
               (await validateCondition(context, filters, pData, {
                 client: source?.type,
               }))
@@ -441,7 +445,7 @@ export class WebhookInvoker {
           // if filters are not defined then skip the check
           if (
             prevData &&
-            filters.length &&
+            hasConditions &&
             (await validateCondition(context, filters, prevData, {
               client: source?.type,
             }))
