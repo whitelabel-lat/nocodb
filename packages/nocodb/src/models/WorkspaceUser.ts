@@ -31,6 +31,28 @@ export default class WorkspaceUser {
       'invite_token',
     ]);
 
+    // (workspace, user) is the primary key, so a member removed earlier has to be
+    // revived instead of inserted again.
+    const removed = await ncMeta
+      .knexConnection(MetaTable.WORKSPACE_USER)
+      .where('fk_workspace_id', insertObj.fk_workspace_id)
+      .where('fk_user_id', insertObj.fk_user_id)
+      .where('deleted', true)
+      .first();
+
+    if (removed) {
+      await ncMeta
+        .knexConnection(MetaTable.WORKSPACE_USER)
+        .where('fk_workspace_id', insertObj.fk_workspace_id)
+        .where('fk_user_id', insertObj.fk_user_id)
+        .update({ ...insertObj, deleted: false, deleted_at: null });
+      await this.clearBaseUserCacheForWorkspace(
+        insertObj.fk_workspace_id,
+        ncMeta,
+      );
+      return removed;
+    }
+
     return await ncMeta.metaInsert2(
       RootScopes.WORKSPACE,
       RootScopes.WORKSPACE,

@@ -6,10 +6,10 @@ import type { UserType } from 'nocodb-sdk';
 import type { NcRequest } from '~/interface/config';
 import Noco from '~/Noco';
 import { PagedResponseImpl } from '~/helpers/PagedResponse';
-import { NcError } from '~/helpers/catchError';
+import { NcBaseError, NcError } from '~/helpers/catchError';
 import { aliasesWithoutAccount } from '~/helpers/emailAliasHelpers';
 import validateParams from '~/helpers/validateParams';
-import { User } from '~/models';
+import { ApiToken, Base, BaseUser, User } from '~/models';
 import Workspace from '~/models/Workspace';
 import WorkspaceUser from '~/models/WorkspaceUser';
 import { AppHooksService } from '~/services/app-hooks/app-hooks.service';
@@ -122,6 +122,83 @@ export class WorkspaceUsersService {
     );
 
     return workspaceUser;
+  }
+
+  async delete(param: { workspaceId: string; userId: string; req: NcRequest }) {
+    const { workspaceId, userId, req } = param;
+
+    const workspaceUser = await WorkspaceUser.get(workspaceId, userId);
+
+    if (!workspaceUser) NcError.userNotFound(userId);
+
+    // Super admin bypasses role power checks, as in `update`
+    const isSuperAdmin =
+      req.user?.roles &&
+      extractRolesObj(req.user.roles)[OrgUserRoles.SUPER_ADMIN];
+
+    if (
+      !isSuperAdmin &&
+      getWorkspaceRolePower({
+        workspace_roles: extractRolesObj(workspaceUser.roles),
+      }) > getWorkspaceRolePower(req.user)
+    ) {
+      NcError.forbidden('Insufficient privilege to remove user');
+    }
+
+    // Owner guard: covers removing the last owner and an owner leaving alone
+    if (workspaceUser.roles === WorkspaceUserRoles.OWNER) {
+      const members = await WorkspaceUser.userList({
+        fk_workspace_id: workspaceId,
+      });
+      const ownerCount = members.filter(
+        (u) => u.roles === WorkspaceUserRoles.OWNER,
+      ).length;
+      if (ownerCount <= 1) {
+        NcError.badRequest('At least one owner should be there');
+      }
+    }
+
+    const ncMeta = await Noco.ncMeta.startTransaction();
+    try {
+      // Without its own base role the user would only fall back to the
+      // workspace role, but explicit base roles must go too or they would
+      // keep access to the bases after the removal.
+      const baseUsers = await BaseUser.getProjectsIdList(userId, ncMeta);
+      for (const baseUser of baseUsers) {
+        if (baseUser.fk_workspace_id !== workspaceId) continue;
+        // Also drops the user's MCP tokens for that base
+        await BaseUser.delete(
+          { workspace_id: workspaceId, base_id: baseUser.base_id },
+          baseUser.base_id,
+          userId,
+          ncMeta,
+        );
+      }
+
+      // Tokens confined to a base of this workspace are useless now. Account
+      // wide tokens stay: the user may belong to other workspaces and, after
+      // this removal, they carry no access here.
+      const baseIds = new Set(
+        (await Base.list(workspaceId, ncMeta)).map((b) => b.id),
+      );
+      for (const token of await ApiToken.list(userId, ncMeta)) {
+        if (token.base_id && baseIds.has(token.base_id)) {
+          await ApiToken.delete(token.id, ncMeta);
+        }
+      }
+
+      // Soft delete; also clears the BASE_USER caches of the workspace
+      await WorkspaceUser.softDelete(workspaceId, userId, ncMeta);
+
+      await ncMeta.commit();
+    } catch (e) {
+      await ncMeta.rollback(e);
+      if (e instanceof NcError || e instanceof NcBaseError) throw e;
+      this.logger.error('Error removing workspace user', e);
+      NcError.internalServerError('Failed to remove user from the workspace');
+    }
+
+    return true;
   }
 
   async invite(
