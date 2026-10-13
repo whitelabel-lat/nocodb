@@ -38,6 +38,7 @@ Estado al 2026-10-13. Este documento es el punto de partida de cualquier sesión
 | `noco_db-20261013-1857-precambio.dump` | antes del cambio a CE |
 | `noco_db-20261013-2052-predevelop.dump` | antes de subir a develop |
 | `noco_db-*-pre-f1.dump` | antes de la función "quitar miembro" |
+| `noco_db-20261013-2331-pre-quickwins.dump` | antes de las funciones de formularios, tarjetas y toggles (sin migraciones) |
 
 Respaldo nuevo antes de cada push con migraciones:
 
