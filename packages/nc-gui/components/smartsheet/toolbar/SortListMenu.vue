@@ -160,7 +160,7 @@ watch(open, () => {
 const getSortIndex = (sort: any) => sorts.value.findIndex((s) => s === sort)
 
 function onToggleSortEnabled(sort: any) {
-  if (blockToggleSort.value) {
+  if (blockToggleSort.value && !ceUiFeatures.viewToggles) {
     showUpgradeToUseToggleSort({ triggerSource: 'toolbar-toggle-sort' })
     return
   }
@@ -305,7 +305,7 @@ watch(
               :meta="meta"
               :read-only="isRestrictedEditor"
               :draggable="appInfo.ee && !isPublic"
-              :show-enable-toggle="appInfo.ee && !isPublic"
+              :show-enable-toggle="(appInfo.ee || ceUiFeatures.viewToggles) && !isPublic"
               :disabled="isLocked"
               @save-or-update="saveOrUpdate($event, getSortIndex($event))"
               @delete="deleteSort($event, getSortIndex($event))"

@@ -248,7 +248,7 @@ const addFieldToGroupBy = (column: ColumnType) => {
 
 // Toggle a group-by on/off without removing it.
 const onToggleGroupByEnabled = (group: Group) => {
-  if (blockToggleGroupBy.value) {
+  if (blockToggleGroupBy.value && !ceUiFeatures.viewToggles) {
     showUpgradeToUseToggleGroupBy({ triggerSource: 'toolbar-toggle-groupby' })
     return
   }
@@ -487,11 +487,11 @@ const getFieldsToGroupBy = (currentGroup: Group) => {
                   :key="group.fk_column_id"
                   class="flex first:mb-0 !mb-1.5 !last:mb-0 items-center gap-2"
                   :class="{
-                    'nc-group-by-disabled-row': appInfo.ee && supportsGroupByEnabledToggle && group.enabled === false,
+                    'nc-group-by-disabled-row': (appInfo.ee || ceUiFeatures.viewToggles) && supportsGroupByEnabledToggle && group.enabled === false,
                   }"
                 >
                   <NcCheckbox
-                    v-if="appInfo.ee && supportsGroupByEnabledToggle"
+                    v-if="(appInfo.ee || ceUiFeatures.viewToggles) && supportsGroupByEnabledToggle"
                     :checked="group.enabled !== false"
                     size="default"
                     :disabled="isLocked"

@@ -109,7 +109,7 @@ const [useProvideViewGroupBy, useViewGroupBy] = useInjectionState(
 
       // Honor disabled group-bys only when the toggle feature is available
       // (mirrors Filter.supportToggle: when blocked, apply everything).
-      return blockToggleGroupBy.value ? source : source.filter((g) => g.enabled !== false)
+      return blockToggleGroupBy.value && !ceUiFeatures.viewToggles ? source : source.filter((g) => g.enabled !== false)
     })
 
     const isGroupBy = computed(() => !!groupBy.value.length)

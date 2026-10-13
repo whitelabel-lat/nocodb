@@ -22,4 +22,6 @@ export const ceUiFeatures = {
   formRedirect: true,
   /** Custom banner and logo upload plus "Hide NocoDB branding" on forms (`banner_image_url`, `logo_url`, `meta.hide_branding`). */
   formBranding: true,
+  /** Switch filters, sorts and group-by on/off without deleting them (`enabled` column, honored by the backend). */
+  viewToggles: true,
 } as const

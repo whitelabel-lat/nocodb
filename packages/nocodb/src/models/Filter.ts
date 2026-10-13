@@ -150,8 +150,12 @@ export default class Filter implements FilterType {
     return instance;
   }
 
+  // CE implementation (whitelabel fork)
+  // Filters can be switched off without deleting them. Only an explicit
+  // `enabled = false` (or 0) disables a filter: rows created before the toggle
+  // existed carry `enabled = true` (column default) or null and stay active.
   static async supportToggle(_context: NcContext) {
-    return false;
+    return true;
   }
 
   public async getModel(ncMeta = Noco.ncMeta): Promise<Model> {

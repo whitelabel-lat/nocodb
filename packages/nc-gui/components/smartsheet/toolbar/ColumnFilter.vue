@@ -149,6 +149,9 @@ const { getFilterOpLabel } = useFilterOperationLabel()
 
 const { appInfo, isMobileMode } = useGlobal()
 
+// Enable/disable a filter without deleting it (`enabled`, honored by the backend in CE)
+const isFilterToggleEnabled = appInfo.value.ee || ceUiFeatures.viewToggles
+
 const logicalOps = [
   { value: 'and', text: t('general.and') },
   { value: 'or', text: t('general.or') },
@@ -875,8 +878,8 @@ const onEnabledChange = async (filter: ColumnFilterType, index: number) => {
   filter.enabled = newEnabled
   await saveOrUpdate(filter, index)
 
-  if (isEeUI) {
-    // EE only: Refresh allFilters so ColumnFilterMenu can reactively update the enabled count
+  if (isEeUI || ceUiFeatures.viewToggles) {
+    // Refresh allFilters so ColumnFilterMenu can reactively update the enabled count
     allFilters.value[parentId?.value ?? 'root'] = [...nonDeletedFilters.value]
 
     // EE only: Sync enabled state to smartsheet store so PinnedFilters.vue reflects it
@@ -888,7 +891,7 @@ const onEnabledChange = async (filter: ColumnFilterType, index: number) => {
 }
 
 const onToggleFilterChange = (filter: ColumnFilterType, index: number) => {
-  if (blockToggleFilter.value) {
+  if (blockToggleFilter.value && !ceUiFeatures.viewToggles) {
     showUpgradeToUseToggleFilter({ triggerSource: 'toolbar-toggle-filter' })
     return
   }
@@ -1391,7 +1394,7 @@ defineExpose({
           <template v-if="filter.is_group">
             <div
               class="flex flex-col min-w-full w-min max-w-full gap-y-2"
-              :class="{ 'nc-filter-disabled-group': isEeUI && filter.enabled === false }"
+              :class="{ 'nc-filter-disabled-group': isFilterToggleEnabled && filter.enabled === false }"
             >
               <div
                 class="flex rounded-lg p-2 min-w-full w-min max-w-full border-1"
@@ -1435,7 +1438,7 @@ defineExpose({
 
                   <template #start>
                     <NcCheckbox
-                      v-if="appInfo.ee && !hideCheckbox"
+                      v-if="isFilterToggleEnabled && !hideCheckbox"
                       :checked="filter.enabled !== false"
                       size="default"
                       :disabled="isLockedView || readOnly"
@@ -1528,7 +1531,7 @@ defineExpose({
 
           <div v-else class="flex xs:(items-start) items-center gap-2 w-full">
             <NcCheckbox
-              v-if="appInfo.ee && !hideCheckbox"
+              v-if="isFilterToggleEnabled && !hideCheckbox"
               :checked="filter.enabled !== false"
               size="default"
               :disabled="isLockedView || readOnly"
@@ -1540,7 +1543,7 @@ defineExpose({
               :class="[
                 `nc-filter-wrapper-${filter.fk_column_id}`,
                 {
-                  'nc-filter-disabled-row': isEeUI && filter.enabled === false,
+                  'nc-filter-disabled-row': isFilterToggleEnabled && filter.enabled === false,
                   'nc-filter-wrapper': !isMobileMode,
                   'min-w-0': hideSoleWhere,
                 },
