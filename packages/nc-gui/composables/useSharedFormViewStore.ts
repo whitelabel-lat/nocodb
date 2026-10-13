@@ -589,7 +589,9 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
       const pk = extractPkFromRow(newRecord, meta.value?.columns as ColumnType[])
 
       if (pk && isValidRedirectUrl.value) {
-        const redirectUrl = sharedFormView.value!.redirect_url!.replace('{record_id}', pk)
+        // navigate to the validated (trimmed) value; the pk is encoded so it
+        // cannot alter the URL structure (path, query or host)
+        const redirectUrl = sharedFormView.value!.redirect_url!.trim().replace('{record_id}', encodeURIComponent(String(pk)))
 
         // Create an anchor element to parse the URL
         const anchor = document.createElement('a')
