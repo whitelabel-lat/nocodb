@@ -930,7 +930,9 @@ const [useProvideSharedFormStore, useSharedFormStore] = useInjectionState((share
   /** reset form if show_blank_form is true */
   watch(submitted, (nextVal) => {
     if (nextVal && sharedFormView.value?.show_blank_form) {
-      if (typeof sharedFormView.value?.redirect_url === 'string') {
+      // only a valid redirect target replaces the "new form" countdown;
+      // a blank/invalid one behaves like no redirect
+      if (isValidRedirectUrl.value) {
         return
       }
 

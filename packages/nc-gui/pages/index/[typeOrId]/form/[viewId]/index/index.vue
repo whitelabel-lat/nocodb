@@ -22,6 +22,7 @@ const {
   draftRestoredAt,
   discardDraft,
   dismissDraftBanner,
+  isValidRedirectUrl,
 } = useSharedFormStoreOrThrow()
 
 const { isMobileMode } = storeToRefs(useConfigStore())
@@ -166,7 +167,7 @@ const { message: templatedMessage } = useTemplatedMessage(
 
               <div
                 v-if="
-                  typeof sharedFormView?.redirect_url !== 'string' &&
+                  !isValidRedirectUrl &&
                   (sharedFormView.show_blank_form || sharedFormView.submit_another_form)
                 "
                 class="mt-16 w-full flex justify-between items-center flex-wrap gap-3"

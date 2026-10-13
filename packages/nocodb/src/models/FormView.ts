@@ -143,11 +143,15 @@ export default class FormView implements FormViewType {
       'meta',
     ]);
 
+    // Store the trimmed URL; blank means "no redirect" and is stored as null.
+    if (typeof insertObj.redirect_url === 'string') {
+      insertObj.redirect_url = insertObj.redirect_url.trim() || null;
+    }
+
     // Reject unsafe redirect targets at the write path — defense-in-depth for
     // the shared-form redirect XSS. See isAbsoluteHttpRedirectUrl.
     if (
       typeof insertObj.redirect_url === 'string' &&
-      insertObj.redirect_url.trim() &&
       !isAbsoluteHttpRedirectUrl(insertObj.redirect_url)
     ) {
       NcError.get(context).badRequest(
@@ -208,11 +212,15 @@ export default class FormView implements FormViewType {
       'meta',
     ]);
 
+    // Store the trimmed URL; blank means "no redirect" and is stored as null.
+    if (typeof updateObj.redirect_url === 'string') {
+      updateObj.redirect_url = updateObj.redirect_url.trim() || null;
+    }
+
     // Reject unsafe redirect targets at the write path — defense-in-depth for
     // the shared-form redirect XSS. See isAbsoluteHttpRedirectUrl.
     if (
       typeof updateObj.redirect_url === 'string' &&
-      updateObj.redirect_url.trim() &&
       !isAbsoluteHttpRedirectUrl(updateObj.redirect_url)
     ) {
       NcError.get(context).badRequest(
