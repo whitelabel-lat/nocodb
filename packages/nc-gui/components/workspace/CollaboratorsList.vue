@@ -879,7 +879,7 @@ watch(inviteDlg, (newVal) => {
 
                     <template
                       v-if="
-                        isEeUI &&
+                        (isEeUI || ceUiFeatures.workspaceMemberRemove) &&
                         (isOwnerOrCreator || record.id === user?.id || (record.isTeam && teamsMap[record.id]?.is_member))
                       "
                     >
