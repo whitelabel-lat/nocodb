@@ -26,6 +26,7 @@ Estado al 2026-10-13. Este documento es el punto de partida de cualquier sesión
 | Traefik | `/etc/dokploy/traefik/dynamic/nocodb-app-zd2t78.yml` escrito a mano (Dokploy no lo generó al mover el dominio por SQL). Si se edita el dominio en la UI, Dokploy lo regenera. |
 | Servicio viejo | compose `nocodb-nocodb-j1bcgn` (imagen oficial) **apagado**, `restart=no`, se conserva para rollback. Borrarlo cuando todo esté confirmado. |
 | SMTP | Gmail, plugin `smtp` en `nc_plugins_v2`. UI: Admin Panel → Setup → Email, o Cuenta → Setup. |
+| Variables de entorno | `NC_API_BULK_OPERATION_MAX_RECORDS=500`: tope de registros por petición masiva con API token (afecta v1/v2 y v3; la UI sigue en 1000). `NC_AUTOMATION_LOG_LEVEL=ERROR`: nivel de log de webhooks; la tabla `hook_logs` no se limpia sola. |
 
 **Push a `main` = despliegue a producción.** No hacer push sin probar antes (ver "Probar antes de subir").
 
@@ -58,6 +59,11 @@ ssh proyectos 'TS=$(date +%Y%m%d-%H%M); D=$(docker ps --format "{{.Names}}" | gr
 - `store/sidebar.ts`: constante local `BASE_OVERVIEW_ROUTE` (bug de upstream develop: la usa sin definirla).
 - **Función: quitar miembro del workspace** (`DELETE /api/v1/workspaces/:ws/users/:user`). Quita roles de base del workspace y tokens limitados a esas bases; limpia cachés de nuevo después del commit (ver trampas). `WorkspaceUser.insert` reactiva una fila borrada (re-invitar fallaba por PK duplicada).
 - **Función: auditoría** (operaciones internas `instanceAuditList` super admin, `workspaceAuditList` owner, `baseAuditList` owner/creator). Pantallas en Admin Panel, ajustes de workspace y de base. Migración `nc_202610131700_audit_created_at_idx` con `CREATE INDEX CONCURRENTLY` (no bloquea escrituras; ~4 s sobre 418 k filas). Redacción de secretos en `utils/auditRedaction.ts`.
+
+- **Nombres de campo ocultos en tarjetas de Gallery/Kanban** (flag `cardFieldHeader`): usa `meta.is_field_header_visible`, sin backend nuevo. Gates: `store/views.ts` y `ViewActionMenu.vue`.
+- **Formulario: redirigir a una URL tras enviar** (flag `formRedirect`): el interruptor en `Form.vue`; el redirect ya existía en `useSharedFormViewStore.ts` (formulario normal y survey comparten `submitForm`). Solo se aceptan URLs absolutas `http(s)://`, validadas al guardar (editor y `FormView.insert/update` con `isAbsoluteHttpRedirectUrl`) y antes de redirigir (`isHttpRedirectUri`). Las URLs relativas y `//host` se rechazan.
+- **Formulario: banner y logo propios, ocultar marca NocoDB** (flag `formBranding`): subida/borrado en `Form.vue`; en las páginas públicas se muestra el logo (`GeneralFormLogo.vue`) y `GeneralFormBranding` respeta `meta.hide_branding`.
+- **Activar/desactivar filtros, ordenamientos y agrupaciones sin borrarlos** (flag `viewToggles`): `Filter.supportToggle` devuelve `true` (stub reemplazado); solo `enabled === false` (o `0`) desactiva, `null`/`undefined`/`true` siguen activos (la columna tiene default `true`). Ordenamientos y agrupaciones ya respetaban `enabled`. La API v3 de filtros no expone `enabled`.
 
 Archivos marcados `// CE implementation (whitelabel fork)` son stubs de upstream que reemplazamos: en cada merge de upstream revisar que sigan siendo nuestros.
 
@@ -107,6 +113,8 @@ Clasificación del análisis de huecos EE (el GUI EE tampoco está: ~250 archivo
 | — | Filtros dinámicos en Links/Lookups | 3-5 d | Código en `linkedRecordDynamicFilter.ts`, falta aplicarlo en el picker |
 | — | 2FA | 4-5 d | El usuario pidió no hacerlo por ahora |
 | — | Permisos por tabla/campo | 10-15 d | Delicado en seguridad |
+| — | Vistas personales | ~1 d | Backend ya en CE; en CE todos ven las vistas personales de otros. Probar que los no dueños no editen. |
+| — | Formularios con fecha de apertura/cierre | 1,5-2 d | `FormView.validateFormScheduling` corta con `if (!isEE) return`; los componentes `Scheduling*` son stubs. |
 | — | Teams, SSO, SCIM, Skills, IA, Sync | 6-35 d c/u | Solo si hace falta |
 | — | Workflows, Docs, Interfaces, Dashboards, Scripts, multi-workspace | 15-70 d c/u | No vale la pena (hay n8n; un solo workspace) |
 
