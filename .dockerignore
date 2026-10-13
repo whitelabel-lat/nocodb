@@ -1,0 +1,35 @@
+# VCS and CI
+.git
+.github
+.husky
+.run
+.do
+
+# Dependencies and build output
+**/node_modules
+**/dist
+**/build
+**/.nuxt
+**/.nitro
+**/.output
+**/.cache
+packages/nocodb/docker/index.js
+packages/nocodb/docker/nc-gui
+packages/nocodb/docker/public
+
+# Not needed for the image
+charts
+docker-compose
+docs
+markdown
+packages/nocodb/tests
+packages/nocodb/test
+packages/nc-integration-scaffolder
+**/*.log
+**/.env
+**/.env.*
+.DS_Store
+
+# Keep the Dockerfile itself out of the context hash
+Dockerfile
+.dockerignore
