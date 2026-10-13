@@ -8,6 +8,8 @@ import { UsersService } from '~/services/users/users.service';
 import { ApiToken, Base, BaseUser } from '~/models';
 import WorkspaceUser from '~/models/WorkspaceUser';
 import Noco from '~/Noco';
+import NocoCache from '~/cache/NocoCache';
+import { CacheScope } from '~/utils/globals';
 
 jest.mock('~/Noco', () => ({
   __esModule: true,
@@ -15,7 +17,7 @@ jest.mock('~/Noco', () => ({
 }));
 
 jest.mock('~/models', () => ({
-  ApiToken: { list: jest.fn(), delete: jest.fn() },
+  ApiToken: { list: jest.fn(), get: jest.fn(), delete: jest.fn() },
   Base: { list: jest.fn() },
   BaseUser: { getProjectsIdList: jest.fn(), delete: jest.fn() },
   User: {},
@@ -23,9 +25,18 @@ jest.mock('~/models', () => ({
 
 jest.mock('~/models/WorkspaceUser', () => ({
   __esModule: true,
-  default: { get: jest.fn(), userList: jest.fn(), softDelete: jest.fn() },
+  default: {
+    get: jest.fn(),
+    userList: jest.fn(),
+    softDelete: jest.fn(),
+    clearBaseUserCacheForWorkspace: jest.fn(),
+  },
 }));
 
+jest.mock('~/cache/NocoCache', () => ({
+  __esModule: true,
+  default: { del: jest.fn(), deepDel: jest.fn() },
+}));
 jest.mock('~/services/app-hooks/app-hooks.service', () => ({
   AppHooksService: jest.fn(),
 }));
@@ -111,6 +122,10 @@ describe('WorkspaceUsersService.delete', () => {
     (ApiToken.list as jest.Mock).mockImplementation(async (userId: string) =>
       tokens.filter((t) => t.fk_user_id === userId),
     );
+    (ApiToken.get as jest.Mock).mockImplementation(async (id: string) => {
+      const found = tokens.find((t) => t.id === id);
+      return found && { ...found, token: `secret-${id}` };
+    });
     (ApiToken.delete as jest.Mock).mockImplementation(async (id: string) => {
       tokens = tokens.filter((t) => t.id !== id);
     });
@@ -145,6 +160,26 @@ describe('WorkspaceUsersService.delete', () => {
     expect(tokens.map((t) => t.id)).toEqual(['t-other-ws', 't-account']);
     expect(trx.commit).toHaveBeenCalled();
     expect(trx.rollback).not.toHaveBeenCalled();
+  });
+
+  it('clears the membership and token caches again after the commit', async () => {
+    const order: string[] = [];
+    trx.commit.mockImplementation(async () => order.push('commit'));
+    (WorkspaceUser.clearBaseUserCacheForWorkspace as jest.Mock).mockImplementation(
+      async () => order.push('clear-base-user-cache'),
+    );
+    (NocoCache.del as jest.Mock).mockImplementation(async (_s: string, key: string) =>
+      order.push(`del ${key}`),
+    );
+
+    await remove('creator1', asReq('owner1', WorkspaceUserRoles.OWNER));
+
+    const commitAt = order.indexOf('commit');
+    expect(commitAt).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('clear-base-user-cache')).toBeGreaterThan(commitAt);
+    expect(order.indexOf(`del ${CacheScope.API_TOKEN}:secret-t-scoped`)).toBeGreaterThan(
+      commitAt,
+    );
   });
 
   it('lets an owner remove another owner while one remains', async () => {

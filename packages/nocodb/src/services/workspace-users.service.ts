@@ -5,6 +5,8 @@ import validator from 'validator';
 import type { UserType } from 'nocodb-sdk';
 import type { NcRequest } from '~/interface/config';
 import Noco from '~/Noco';
+import NocoCache from '~/cache/NocoCache';
+import { CacheDelDirection, CacheScope } from '~/utils/globals';
 import { PagedResponseImpl } from '~/helpers/PagedResponse';
 import { NcBaseError, NcError } from '~/helpers/catchError';
 import { aliasesWithoutAccount } from '~/helpers/emailAliasHelpers';
@@ -158,6 +160,7 @@ export class WorkspaceUsersService {
       }
     }
 
+    const removedTokens: { id: string; token: string }[] = [];
     const ncMeta = await Noco.ncMeta.startTransaction();
     try {
       // Without its own base role the user would only fall back to the
@@ -183,7 +186,10 @@ export class WorkspaceUsersService {
       );
       for (const token of await ApiToken.list(userId, ncMeta)) {
         if (token.base_id && baseIds.has(token.base_id)) {
+          // The list has no token value; the auth cache is keyed by it.
+          const full = await ApiToken.get(token.id, ncMeta);
           await ApiToken.delete(token.id, ncMeta);
+          removedTokens.push({ id: token.id, token: full?.token });
         }
       }
 
@@ -196,6 +202,21 @@ export class WorkspaceUsersService {
       if (e instanceof NcError || e instanceof NcBaseError) throw e;
       this.logger.error('Error removing workspace user', e);
       NcError.internalServerError('Failed to remove user from the workspace');
+    }
+
+    // The caches were cleared inside the transaction. A request that ran before
+    // the commit can refill them with the old membership or a deleted token,
+    // so clear them again.
+    await WorkspaceUser.clearBaseUserCacheForWorkspace(workspaceId);
+    for (const { id, token } of removedTokens) {
+      await NocoCache.deepDel(
+        'root',
+        `${CacheScope.API_TOKEN}:${id}`,
+        CacheDelDirection.CHILD_TO_PARENT,
+      );
+      if (token) {
+        await NocoCache.del('root', `${CacheScope.API_TOKEN}:${token}`);
+      }
     }
 
     return true;
